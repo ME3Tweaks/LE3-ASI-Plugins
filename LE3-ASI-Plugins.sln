@@ -5,22 +5,22 @@ VisualStudioVersion = 16.0.31624.102
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3-SDK", "LE3-SDK\LE3-SDK.vcxproj", "{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3StreamingLevelsHUD", "LE3StreamingLevelsHUD\LE3StreamingLevelsHUD.vcxproj", "{24261DB1-E217-4234-B048-1ACEA2F67237}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
-		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Debug|x64.ActiveCfg = Debug|x64
 		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Debug|x64.Build.0 = Debug|x64
-		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Debug|x86.ActiveCfg = Debug|Win32
-		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Debug|x86.Build.0 = Debug|Win32
 		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Release|x64.ActiveCfg = Release|x64
 		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Release|x64.Build.0 = Release|x64
-		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Release|x86.ActiveCfg = Release|Win32
-		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}.Release|x86.Build.0 = Release|Win32
+		{24261DB1-E217-4234-B048-1ACEA2F67237}.Debug|x64.ActiveCfg = Debug|x64
+		{24261DB1-E217-4234-B048-1ACEA2F67237}.Debug|x64.Build.0 = Debug|x64
+		{24261DB1-E217-4234-B048-1ACEA2F67237}.Release|x64.ActiveCfg = Release|x64
+		{24261DB1-E217-4234-B048-1ACEA2F67237}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
