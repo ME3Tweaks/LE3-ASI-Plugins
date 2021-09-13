@@ -14,6 +14,10 @@ typedef unsigned long long   uint64;
 typedef wchar_t wchar;
 
 
+#define _CONCAT_NAME(A, B) A ## B
+#define CONCAT_NAME(A, B) _CONCAT_NAME(A, B)
+
+
 namespace Common
 {
     void OpenConsole()
@@ -45,7 +49,7 @@ namespace Common
         if (INVALID_HANDLE_VALUE != snapshot)
         {
             MODULEENTRY32 moduleEntry = { 0 };
-            moduleEntry.dwSize = sizeof(MODULEENTRY32);
+                moduleEntry.dwSize = sizeof(MODULEENTRY32);
 
             if (Module32First(snapshot, &moduleEntry))
             {
@@ -63,6 +67,73 @@ namespace Common
 
         return baseAddress;
     }
+
+    void MessageBoxError(const wchar_t* title, const wchar_t* format, ...)
+    {
+        wchar_t buffer[1024];
+
+        // Parse the format string.
+        va_list args;
+        va_start(args, format);
+        int rc = _vsnwprintf_s(buffer, 1024, _TRUNCATE, format, args);
+        va_end(args);
+
+        if (rc < 0)
+        {
+            swprintf_s(buffer, 1024, L"MessageBoxError: error or truncation happened: %d!", rc);
+        }
+
+        // Display the message box.
+        MessageBoxW(nullptr, buffer, title, MB_OK | MB_ICONERROR);
+    }
 }
 
-#define writeln(msg,...) fwprintf_s(stdout, L"LENE::" msg "\n", __VA_ARGS__)
+#define writeln(msg, ...) fwprintf_s(stdout, L"" msg "\n", __VA_ARGS__)
+#define errorln(msg, ...) Common::MessageBoxError(L"ASI Plugin Error", msg, __VA_ARGS__)
+
+
+// SDK and hook initialization macros.
+// ============================================================
+
+#define INIT_CHECK_SDK() \
+    auto _ = SDKInitializer::Instance(); \
+    if (!SDKInitializer::Instance()->GetBioNamePools()) \
+    { \
+        errorln(L"Attach - GetBioNamePools() returned NULL!"); \
+        return false; \
+    } \
+    if (!SDKInitializer::Instance()->GetObjects()) \
+    { \
+        errorln(L"GetObjects() returned NULL!"); \
+        return false; \
+    }
+
+#define INIT_FIND_PATTERN(VAR, PATTERN) \
+    if (auto rc = InterfacePtr->FindPattern((void**)&VAR, PATTERN); rc != SPIReturn::Success) \
+    { \
+        errorln(L"Attach - failed to find " #VAR L" pattern: %d / %s", rc, SPIReturnToString(rc)); \
+        return false; \
+    } \
+    writeln(L"Attach - found " #VAR L" pattern: 0x%p", VAR);
+
+#define INIT_FIND_PATTERN_POSTHOOK(VAR, PATTERN) \
+    if (auto rc = InterfacePtr->FindPattern((void**)&VAR, PATTERN); rc != SPIReturn::Success) \
+    { \
+        errorln(L"Attach - failed to find " #VAR L" posthook pattern: %d / %s", rc, SPIReturnToString(rc)); \
+        return false; \
+    } \
+    VAR = (decltype(VAR))((char*)VAR - 5); \
+    writeln(L"Attach - found " #VAR L" posthook pattern: 0x%p", VAR);
+
+#define INIT_FIND_PATTERN_POSTRIP(VAR, PATTERN) \
+    INIT_FIND_PATTERN(VAR, PATTERN); \
+    VAR = (decltype(VAR))((char*)VAR + *(DWORD*)((char*)VAR - 4)); \
+    writeln(L"Attach - found " #VAR L" global variable: %#p", VAR);
+
+#define INIT_HOOK_PATTERN(VAR) \
+    if (auto rc = InterfacePtr->InstallHook(MYHOOK #VAR, VAR, CONCAT_NAME(VAR, _hook), (void**)& CONCAT_NAME(VAR, _orig)); rc != SPIReturn::Success) \
+    { \
+        fwprintf_s(stdout, L"Attach - failed to hook " #VAR L": %d / %s\n", rc, SPIReturnToString(rc)); \
+        return false; \
+    } \
+    fwprintf_s(stdout, L"Attach - hooked " #VAR L": 0x%p -> 0x%p (saved at 0x%p)\n", VAR, CONCAT_NAME(VAR, _hook), CONCAT_NAME(VAR, _orig));

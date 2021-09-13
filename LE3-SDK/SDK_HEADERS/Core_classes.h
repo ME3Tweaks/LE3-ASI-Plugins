@@ -219,9 +219,11 @@ private:
 public:
 	static struct TArray<class UObject*>* GObjObjects(); 
 
-	char* GetName(); 
+	char* GetName();
+	char* GetInstancedName();
 	char* GetNameCPP(); 
-	char* GetFullName(); 
+	char* GetFullName();
+	char* GetFullPath();
 
 	template<class T> static T* FindObject (char* ObjectFullName); 
 	static class UClass* FindClass (char* ClassFullName); 

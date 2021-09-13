@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3-SDK", "LE3-SDK\LE3-SDK.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3StreamingLevelsHUD", "LE3StreamingLevelsHUD\LE3StreamingLevelsHUD.vcxproj", "{24261DB1-E217-4234-B048-1ACEA2F67237}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KismetLogger", "LE3KismetLogger\KismetLogger.vcxproj", "{1F82E847-1848-4F1E-B458-E008C2FF8F43}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,10 @@ Global
 		{24261DB1-E217-4234-B048-1ACEA2F67237}.Debug|x64.Build.0 = Debug|x64
 		{24261DB1-E217-4234-B048-1ACEA2F67237}.Release|x64.ActiveCfg = Release|x64
 		{24261DB1-E217-4234-B048-1ACEA2F67237}.Release|x64.Build.0 = Release|x64
+		{1F82E847-1848-4F1E-B458-E008C2FF8F43}.Debug|x64.ActiveCfg = Debug|x64
+		{1F82E847-1848-4F1E-B458-E008C2FF8F43}.Debug|x64.Build.0 = Debug|x64
+		{1F82E847-1848-4F1E-B458-E008C2FF8F43}.Release|x64.ActiveCfg = Release|x64
+		{1F82E847-1848-4F1E-B458-E008C2FF8F43}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -44,6 +44,22 @@ char* UObject::GetName()
 	return cOutBuffer; 
 } 
 
+char* UObject::GetInstancedName()
+{
+	static char cOutBuffer[256];
+
+	if (this->Name.Number > 0)
+	{
+		sprintf_s(cOutBuffer, "%s_%d", this->Name.GetName(), this->Name.Number - 1);
+	}
+	else
+	{
+		sprintf_s(cOutBuffer, "%s", this->Name.GetName());
+	}
+
+	return cOutBuffer;
+}
+
 char* UObject::GetNameCPP() 
 { 
 	static char cOutBuffer[ 256 ]; 
@@ -107,6 +123,25 @@ char* UObject::GetFullName()
 
 	return "(null)"; 
 } 
+
+void GetFullPathInternal(UObject* object, char* str)
+{
+	if (object->Outer)
+	{
+		GetFullPathInternal(object->Outer, str);
+		strcat_s(str, 512, ".");
+	}
+	strcat_s(str, 512, object->GetInstancedName());
+}
+
+char* UObject::GetFullPath()
+{
+	static char cOutBuffer[512];
+	cOutBuffer[0] = '\0';
+	GetFullPathInternal(this, cOutBuffer);
+
+	return cOutBuffer;
+}
 
 template< class T > T* UObject::FindObject ( char* ObjectFullName ) 
 { 
