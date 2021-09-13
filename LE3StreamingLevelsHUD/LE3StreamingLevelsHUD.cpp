@@ -10,9 +10,9 @@
 #include "../LE3-SDK/Common.h"
 #include "../LE3-SDK/SdkHeaders.h"
 
-#define SLHHOOK "LE3StreamingLevelsHUD_"
+#define MYHOOK "LE3StreamingLevelsHUD_"
 
-SPI_PLUGINSIDE_SUPPORT(L"LE3StreamingLevelsHUD", L"Mgamerz", L"1.0.0", SPI_GAME_LE3, SPI_VERSION_LATEST);
+SPI_PLUGINSIDE_SUPPORT(L"LE3StreamingLevelsHUD", L"Mgamerz", L"2.0.0", SPI_GAME_LE3, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_POSTLOAD;
 SPI_PLUGINSIDE_ASYNCATTACH;
 
@@ -23,8 +23,6 @@ SPI_PLUGINSIDE_ASYNCATTACH;
 // ProcessEvent hook
 // Renders the HUD for Streaming Levels
 // ======================================================================
-
-
 typedef void (*tProcessEvent)(UObject* Context, UFunction* Function, void* Parms, void* Result);
 tProcessEvent ProcessEvent = nullptr;
 tProcessEvent ProcessEvent_orig = nullptr;
@@ -58,7 +56,14 @@ int line = 0;
 PROCESS_MEMORY_COUNTERS pmc;
 
 
-void biohud_hook(UObject* Context, UFunction* Function, void* Parms, void* Result)
+/// <summary>
+/// Function that is called when ProcessEvent is hooked.
+/// </summary>
+/// <param name="Context"></param>
+/// <param name="Function"></param>
+/// <param name="Parms"></param>
+/// <param name="Result"></param>
+void ProcessEvent_hook(UObject* Context, UFunction* Function, void* Parms, void* Result)
 {
 	if (!strcmp(Function->GetFullName(), "Function SFXGame.BioHUD.PostRender"))
 	{
@@ -185,29 +190,10 @@ void biohud_hook(UObject* Context, UFunction* Function, void* Parms, void* Resul
 
 SPI_IMPLEMENT_ATTACH
 {
-	//Common::OpenConsole();
 
-	auto _ = SDKInitializer::Instance();
-/*writeln(L"Attach - names at 0x%p, objects at 0x%p",
-	SDKInitializer::Instance()->GetBioNamePools(),
-	SDKInitializer::Instance()->GetObjects());*/
-
-if (auto rc = InterfacePtr->FindPattern((void**)&ProcessEvent, "40 55 41 56 41 57 48 81 EC 90 00 00 00 48 8D 6C 24 20");
-	rc != SPIReturn::Success)
-{
-	//writeln(L"Attach - failed to find ProcessEvent pattern: %d / %s", rc, SPIReturnToString(rc));
-	return false;
-}
-
-
-if (auto rc = InterfacePtr->InstallHook(SLHHOOK "ProcessEvent", ProcessEvent, biohud_hook, (void**)&ProcessEvent_orig);
-	rc != SPIReturn::Success)
-{
-	//writeln(L"Attach - failed to hook ProcessEvent: %d / %s", rc, SPIReturnToString(rc));
-	return false;
-}
-
-return true;
+	INIT_CHECK_SDK();
+	INIT_FIND_PATTERN_POSTHOOK(ProcessEvent, LE_PATTERN_POSTHOOK_PROCESSEVENT);
+	INIT_HOOK_PATTERN(ProcessEvent);
 }
 
 SPI_IMPLEMENT_DETACH
