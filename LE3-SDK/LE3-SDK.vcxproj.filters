@@ -21,119 +21,8 @@
     <ClInclude Include="SdkInitializer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SDK_HEADERS\Core_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\Core_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\Core_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\Engine_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\Engine_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\Engine_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\GameFramework_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\GameFramework_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\GameFramework_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\GFxUI_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\GFxUI_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\GFxUI_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\IpDrv_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\IpDrv_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\IpDrv_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGameContentLiveKismet_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGameContentLiveKismet_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGameContentLiveKismet_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGameContent_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGameContent_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGameContent_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGame_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGame_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXGame_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXOnlineFoundation_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXOnlineFoundation_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXOnlineFoundation_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXQA_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXQA_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\SFXQA_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\WinDrv_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\WinDrv_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\WinDrv_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\WwiseAudio_classes.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\WwiseAudio_f_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SDK_HEADERS\WwiseAudio_structs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="SDK_HEADERS\Core_functions.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="SDK_HEADERS\Engine_functions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -146,13 +35,13 @@
     <ClCompile Include="SDK_HEADERS\IpDrv_functions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SDK_HEADERS\SFXGameContentLiveKismet_functions.cpp">
+    <ClCompile Include="SDK_HEADERS\SFXGame_functions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SDK_HEADERS\SFXGameContent_functions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SDK_HEADERS\SFXGame_functions.cpp">
+    <ClCompile Include="SDK_HEADERS\SFXGameContentLiveKismet_functions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SDK_HEADERS\SFXOnlineFoundation_functions.cpp">
@@ -165,6 +54,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SDK_HEADERS\WwiseAudio_functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SDK_HEADERS\Core_functions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
