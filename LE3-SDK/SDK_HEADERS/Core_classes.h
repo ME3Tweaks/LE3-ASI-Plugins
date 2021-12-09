@@ -732,7 +732,18 @@ public:
 class ULinker : public UObject
 {
 public:
-	unsigned char                                      UnknownData00[ 0x150 ];                           		// 0x0060 (0x0150) MISSED OFFSET
+	// MODIFIED FOR DEBUGLOGGER
+	// No idea if these even correctly map to each other...
+	class UPackage* LinkerRoot;                                              // 0x0060 (0x0008)
+	unsigned char                                      UnknownData00[0xA8];                                   // 0x0068 (0x00A4) MISSED OFFSET
+	struct TArray<FName>                               NameMap;                                                 // 0x011C (0x0010)
+	struct TArray<FObjectImport>                       ImportMap;                                               // 0x011C (0x0010)
+	unsigned char                                      UnknownData01[0x68];                                   // 0x012C (0x0068) MISSED OFFSET
+	struct FString                                     Filename;                                                // 0x0194 (0x0010)
+	unsigned char                                      UnknownData02[0x4];                                       // 0x01A4 (0x0008) MISSED OFFSET
+	
+	// ORIGINAL:
+	//unsigned char                                      UnknownData00[ 0x150 ];                           		// 0x0060 (0x0150) MISSED OFFSET
 
 private:
 	static UClass* pClassPointer;

@@ -207,7 +207,23 @@ struct FScriptDelegate
 { 
 	class UObject*		Object; 
 	struct FName		FunctionName; 
-}; 
+};
+
+// COPIED FROM LE1 SDK - NOT SURE IF THIS NEEDS CHANGED...
+struct FObjectResource
+{
+	struct FName ObjectName;
+	int	OuterIndex;
+};
+
+struct FObjectImport : public FObjectResource
+{
+	struct FName ClassPackage;
+	struct FName ClassName;
+	class UObject* Object;
+	class ULinkerLoad* SourceLinker;
+	int SourceIndex;
+};
 
 /*
 # ========================================================================================= #

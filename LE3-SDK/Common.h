@@ -88,6 +88,7 @@ namespace Common
     }
 }
 
+#define writeMsg(msg, ...) fwprintf_s(stdout, L"" msg, __VA_ARGS__)
 #define writeln(msg, ...) fwprintf_s(stdout, L"" msg "\n", __VA_ARGS__)
 #define errorln(msg, ...) Common::MessageBoxError(L"ASI Plugin Error", msg, __VA_ARGS__)
 
