@@ -228,7 +228,7 @@ public:
 	template<class T> static T* FindObject (char* ObjectFullName); 
 	static class UClass* FindClass (char* ClassFullName); 
 
-	bool IsA(class UClass* pClass); 
+	bool IsA(class UClass* pClass);
 
 	static UClass* StaticClass();
 

@@ -225,6 +225,11 @@ struct FObjectImport : public FObjectResource
 	int SourceIndex;
 };
 
+bool IsA(class UClass* pClass);
+template<typename T> bool IsA(UObject* object) {
+	return object->IsA(T::StaticClass());
+}
+
 /*
 # ========================================================================================= #
 # Includes
