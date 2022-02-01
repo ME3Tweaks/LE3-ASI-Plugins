@@ -148,11 +148,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DebugLogger.cpp" />
+    <ClCompile Include="LoggingHooks.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LE3-SDK\LE3-SDK.vcxproj">
       <Project>{8da34ede-7d5c-4da3-8841-78ab05e8c6d2}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="LoggingHooks.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

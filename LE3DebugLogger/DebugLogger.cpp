@@ -10,6 +10,7 @@
 #include "../LE3-SDK/Interface.h"
 #include "../LE3-SDK/Common.h"
 #include "../LE3-SDK/ME3TweaksHeader.h"
+//#include "LoggingHooks.h"
 
 #define MYHOOK "DebugLogger_"
 
@@ -124,6 +125,76 @@ void appAssertFailed_Hook(char* logFuncName, char* sourceFileName, short errorCo
 	appAssertFailed_orig(logFuncName, sourceFileName, errorCode, message);
 }
 
+struct OutParmInfo
+{
+	UProperty* Prop;
+	BYTE* PropAddr;
+	OutParmInfo* Next;
+};
+
+struct LE3FFrame
+{
+	void* vtable; // 0x8
+	//int unks[3]; // 0x1C 0x20 0x24
+	UStruct* Node; // 0x2C
+	UObject* Object; // 0x34
+	BYTE* Code; // 0x3C
+	BYTE* Locals; // 0x44
+	LE3FFrame* PreviousFrame; // 0x4C
+	OutParmInfo* OutParms; // 0x54
+};
+
+struct LE3FFrameHACK
+{
+	void* vtable; // 0x0
+	int unknown[6]; // 0x08 0x0C 0x10 0x14 0x18 0x1C
+	UObject* Object; // 0x20
+	BYTE* Code; // 0x28
+	// No idea what this other stuff is
+};
+
+typedef void (*tNativeFunction) (UObject* Context, LE3FFrame* Stack, void* Result);
+tNativeFunction* GNatives = (tNativeFunction*)0x7ff74c084bb0; // monkaS
+
+typedef wchar_t* (*tLogInternalNative)(UObject* callingObject, LE3FFrameHACK* param2);
+tLogInternalNative LogInternal = nullptr;
+tLogInternalNative LogInternal_orig = nullptr;
+void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
+{
+	// 0x20 = Object?
+	// 0x28 = Code?
+	// 0x2C = ??
+	// 0x38 = PreviousFrame?
+	//BYTE* originalCodePointer = ((BYTE*)stackFrame + 0x28);//->Code;
+	//BYTE nativeIndex = **(BYTE**)((BYTE*)stackFrame + 0x28);
+	//*((BYTE*)stackFrame + 0x28) = *((BYTE*)stackFrame + 0x28) + 1;
+	////stackFrame->Code++;
+	//FString stringArg;
+	//UObject* sfObject = (UObject*)((BYTE*)stackFrame + 0x20);
+	//GNatives[nativeIndex](sfObject, (LE3FFrame*)stackFrame, &stringArg);
+
+	////log stringArg somehow
+	//writeln(L"LogInternal() from %hs: %s", callingObject->GetFullName(), stringArg.Data);
+
+	////restore the code pointer so LogInternal executes normally.
+	////stackFrame->Code = originalCodePointer;
+	//*((BYTE*)stackFrame + 0x28) = *originalCodePointer;
+	//LogInternal_orig(callingObject, stackFrame);
+
+	BYTE* originalCodePointer = stackFrame->Code;
+	BYTE nativeIndex = *originalCodePointer++;
+	FString stringArg;
+	UObject* sfObject = stackFrame->Object;
+	GNatives[nativeIndex](sfObject, (LE3FFrame*)stackFrame, &stringArg);
+
+	//log stringArg somehow
+	writeln(L"LogInternal() from %hs: %s", callingObject->GetFullName(), stringArg.Data);
+
+	//restore the code pointer so LogInternal executes normally.
+	//stackFrame->Code = originalCodePointer;
+	stackFrame->Code = originalCodePointer;
+	LogInternal_orig(callingObject, stackFrame);
+}
 
 // A prototype of UFunction::Bind method used to
 // bind UScript functions to native implementations.
@@ -145,7 +216,8 @@ void HookedUFunctionBind(UFunction* functionObj)
 			writeln(L"%hs = 0x%p", name, finalAddr);
 			logger.writeToLog(string_format("%s = 0x%p", name, finalAddr), false, true);
 		}
-	} else
+	}
+	else
 	{
 		writeln(L"NOT NATIVE: %hs", functionObj->GetFullName());
 	}
@@ -167,20 +239,20 @@ SPI_IMPLEMENT_ATTACH
 
 	// HOOK UFUNCTION BIND FOR TESTING
 
-	writeln(L"Initializing UFunction::Bind hook...");
-	if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&UFunctionBind), "48 8B C4 55 41 56 41 57 48 8D A8 78 F8 FF FF 48 81 EC 70 08 00 00 48 C7 44 24 50 FE FF FF FF 48 89 58 10 48 89 70 18 48 89 78 20 48 8B ?? ?? ?? ?? ?? 48 33 C4 48 89 85 60 07 00 00 48 8B F1 E8 ?? ?? ?? ?? 48 8B F8 F7 86");
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to find UFunction::Bind pattern: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-	if (auto const rc = InterfacePtr->InstallHook(MYHOOK "UFunction::Bind", UFunctionBind, HookedUFunctionBind, reinterpret_cast<void**>(&UFunctionBind_orig));
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to hook UFunction::Bind: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-	writeln(L"Hooked UFunction::Bind");
+	//writeln(L"Initializing UFunction::Bind hook...");
+	//if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&UFunctionBind), "48 8B C4 55 41 56 41 57 48 8D A8 78 F8 FF FF 48 81 EC 70 08 00 00 48 C7 44 24 50 FE FF FF FF 48 89 58 10 48 89 70 18 48 89 78 20 48 8B ?? ?? ?? ?? ?? 48 33 C4 48 89 85 60 07 00 00 48 8B F1 E8 ?? ?? ?? ?? 48 8B F8 F7 86");
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to find UFunction::Bind pattern: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
+	//if (auto const rc = InterfacePtr->InstallHook(MYHOOK "UFunction::Bind", UFunctionBind, HookedUFunctionBind, reinterpret_cast<void**>(&UFunctionBind_orig));
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to hook UFunction::Bind: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
+	//writeln(L"Hooked UFunction::Bind");
 
 
 
@@ -243,23 +315,63 @@ SPI_IMPLEMENT_ATTACH
 	//writeln(L"Hooked LoadPackage");
 
 	// appAssertFailedHook ----------------------------------------------------------------
-	writeln(L"Initializing appAsssertFailedHook...");
-	if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&appAssertFailed), "4c 89 4c 24 20 53 55 56 57 b8 78 22 00 00 e8 dd 19 eb 00 48 2b e0 48 c7 44 24 30 fe ff ff ff");
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to find appAssertFailed pattern: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
+	//writeln(L"Initializing appAsssertFailedHook...");
+	//if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&appAssertFailed), "4c 89 4c 24 20 53 55 56 57 b8 78 22 00 00 e8 dd 19 eb 00 48 2b e0 48 c7 44 24 30 fe ff ff ff");
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to find appAssertFailed pattern: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
 
-	if (auto const rc = InterfacePtr->InstallHook(MYHOOK "appAssertFailed", appAssertFailed, appAssertFailed_Hook, reinterpret_cast<void**>(&appAssertFailed_orig));
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to hook appAssertFailed: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-	writeln(L"Hooked appAssertFailed");
+	//if (auto const rc = InterfacePtr->InstallHook(MYHOOK "appAssertFailed", appAssertFailed, appAssertFailed_Hook, reinterpret_cast<void**>(&appAssertFailed_orig));
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to hook appAssertFailed: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
+	//writeln(L"Hooked appAssertFailed");
 
 
+	//	writeln(L"Initializing appAsssertFailedHook...");
+	//if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&appAssertFailed), "4c 89 4c 24 20 53 55 56 57 b8 78 22 00 00 e8 dd 19 eb 00 48 2b e0 48 c7 44 24 30 fe ff ff ff");
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to find appAssertFailed pattern: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
+
+	//if (auto const rc = InterfacePtr->InstallHook(MYHOOK "appAssertFailed", appAssertFailed, appAssertFailed_Hook, reinterpret_cast<void**>(&appAssertFailed_orig));
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to hook appAssertFailed: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
+	//writeln(L"Hooked appAssertFailed");
+
+
+	INIT_FIND_PATTERN_POSTHOOK(LogInternal, /*"40 57 48 83 ec */"40 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 50 48 89 74 24 60 48 8b da 33 f6 48 89 74 24 28 48 89 74 24 30");
+	INIT_HOOK_PATTERN(LogInternal);
+
+	// ==============================================================
+	// FConfig::CombineFromBuffer
+	// ==============================================================
+	//writeln(L"Locating FConfig::CombineFromBuffer...");
+	//if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&FConfigCombineFromBuffer), "40 55 56 57 41 54 41 55 41 56 41 57 48 8d ac 24 e0 fe ff ff 48 81 ec 20 02 00 00 48 c7 85 b8 00 00 00 fe ff ff ff");
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Failed to find FConfig::CombineFromBuffer pattern: %d / %s", rc, SPIReturnToString(rc));
+	//	//return false;
+	//}
+	//else if (auto const rc = InterfacePtr->InstallHook(MYHOOK "FConfigCombineFromBuffer", FConfigCombineFromBuffer, FConfigCombineFromBuffer_hook, reinterpret_cast<void**>(&FConfigCombineFromBuffer_orig));
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to hook FConfigCombineFromBuffer: %d / %s", rc, SPIReturnToString(rc));
+	//	//return false;
+	//}
+	//else
+	//{
+	//	writeln(L"Hooked FConfigCombineFromBuffer");
+	//}
 
 	INIT_FIND_PATTERN_POSTHOOK(ProcessEvent, LE_PATTERN_POSTHOOK_PROCESSEVENT);
 	INIT_HOOK_PATTERN(ProcessEvent);
