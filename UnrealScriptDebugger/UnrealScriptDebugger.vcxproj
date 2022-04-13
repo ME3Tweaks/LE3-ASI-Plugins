@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{7172d8ec-2994-4d0d-92a0-7aa3f9fab08e}</ProjectGuid>
-    <RootNamespace>LE3DebugLogger</RootNamespace>
+    <ProjectGuid>{028448EA-01A4-4B5E-98B5-B28CA3A0839F}</ProjectGuid>
+    <RootNamespace>UnrealScriptDebugger</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -147,16 +147,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="DebugLogger.cpp" />
-    <ClCompile Include="LoggingHooks.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\LE3-SDK\LE3-SDK.vcxproj">
       <Project>{8da34ede-7d5c-4da3-8841-78ab05e8c6d2}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="LoggingHooks.h" />
+    <ClCompile Include="BreakPointContainer.cpp" />
+    <ClCompile Include="UnrealscriptDebugger.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BreakPointContainer.h" />
+    <ClInclude Include="UnrealScriptDefinitions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

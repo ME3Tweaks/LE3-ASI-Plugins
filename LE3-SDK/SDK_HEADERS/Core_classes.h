@@ -205,7 +205,7 @@ public:
 	struct FPointer                                    HashNext;                                         		// 0x0014 (0x0008) [0x0000000000021002]              ( CPF_Const | CPF_Native | CPF_EditConst )
 	struct FPointer                                    HashOuterNext;                                    		// 0x001C (0x0008) [0x0000000000021002]              ( CPF_Const | CPF_Native | CPF_EditConst )
 	struct FPointer                                    StateFrame;                                       		// 0x0024 (0x0008) [0x0000000000021002]              ( CPF_Const | CPF_Native | CPF_EditConst )
-	class UObject*                                     Linker;                                           		// 0x002C (0x0008) [0x0000000000821002]              ( CPF_Const | CPF_Native | CPF_EditConst | CPF_NoExport )
+	class ULinkerLoad*                                 Linker;                                           		// 0x002C (0x0008) [0x0000000000821002]              ( CPF_Const | CPF_Native | CPF_EditConst | CPF_NoExport )
 	struct FPointer                                    LinkerIndex;                                      		// 0x0034 (0x0008) [0x0000000000821002]              ( CPF_Const | CPF_Native | CPF_EditConst | CPF_NoExport )
 	int                                                NetIndex;                                         		// 0x003C (0x0004) [0x0000000000821002]              ( CPF_Const | CPF_Native | CPF_EditConst | CPF_NoExport )
 	class UObject*                                     Outer;                                            		// 0x0040 (0x0008) [0x0000000000021002]              ( CPF_Const | CPF_Native | CPF_EditConst )
