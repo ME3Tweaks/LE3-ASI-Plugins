@@ -13,7 +13,25 @@ bool BreakPointContainer::ContainsFunc(const std::string& funcPath)
 	return BreakpointMap.find(funcPath) != BreakpointMap.end();
 }
 
-bool BreakPointContainer::HasBreakPoint(const std::string& funcPath, unsigned short location)
+std::set<unsigned short> BreakPointContainer::GetBreakPoints(const char* funcPath)
+{
+	const std::string str(funcPath);
+	return GetBreakPoints(str);
+}
+
+std::set<unsigned short> BreakPointContainer::GetBreakPoints(const std::string& funcPath)
+{
+	std::lock_guard lock(BreakpointMutex);
+
+	if (const auto pair = BreakpointMap.find(funcPath); pair != BreakpointMap.end())
+	{
+		return pair->second;
+	}
+
+	return {};
+}
+
+bool BreakPointContainer::HasBreakPoint(const std::string& funcPath, const unsigned short location)
 {
 	std::lock_guard lock(BreakpointMutex);
 
@@ -24,13 +42,13 @@ bool BreakPointContainer::HasBreakPoint(const std::string& funcPath, unsigned sh
 	return false;
 }
 
-void BreakPointContainer::AddBreakPoint(const char* funcPath, unsigned short location)
+void BreakPointContainer::AddBreakPoint(const char* funcPath, const unsigned short location)
 {
 	const std::string str(funcPath);
 	AddBreakPoint(str, location);
 }
 
-void BreakPointContainer::AddBreakPoint(const std::string& funcPath, unsigned short location)
+void BreakPointContainer::AddBreakPoint(const std::string& funcPath, const unsigned short location)
 {
 	std::lock_guard lock(BreakpointMutex);
 
@@ -45,13 +63,13 @@ void BreakPointContainer::AddBreakPoint(const std::string& funcPath, unsigned sh
 	}
 }
 
-bool BreakPointContainer::RemoveBreakPoint(const char* funcPath, unsigned short location)
+bool BreakPointContainer::RemoveBreakPoint(const char* funcPath, const unsigned short location)
 {
 	const std::string str(funcPath);
 	return RemoveBreakPoint(str, location);
 }
 
-bool BreakPointContainer::RemoveBreakPoint(const std::string& funcPath, unsigned short location)
+bool BreakPointContainer::RemoveBreakPoint(const std::string& funcPath, const unsigned short location)
 {
 	std::lock_guard lock(BreakpointMutex);
 

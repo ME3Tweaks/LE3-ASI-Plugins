@@ -43,6 +43,7 @@
 #elif defined GAME_LE3
 #define SPI_GAME SPI_GAME_LE3
 #endif
+
 SPI_PLUGINSIDE_SUPPORT(L"UnrealscriptDebugger", L"SirCxyrtyx", L"2.0.0", SPI_GAME, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_POSTLOAD;
 SPI_PLUGINSIDE_ASYNCATTACH;
@@ -73,6 +74,7 @@ struct FFrame
 
 struct DebuggerFrame
 {
+	FFrame* Stack;
 	UStruct* Node;
 	UObject* Object;
 	BYTE* CodeBaseAddr;
@@ -87,6 +89,27 @@ struct DebuggerFrame
 	USHORT CurrentPosition;
 };
 
+enum PipeCommands : BYTE
+{
+	CMD_AttachDebugger = 1,
+	CMD_DetachDebugger = 2,
+	CMD_BreakImmediate = 3,
+	CMD_Breakpoint = 4,
+		CMD_Add = 5,
+		CMD_Remove = 6,
+	CMD_StepInto = 7,
+	CMD_StepOver = 8,
+	CMD_StepOut = 9,
+	CMD_Resume = 10
+};
+
+enum class StepState
+{
+	Not,
+	In,
+	Over,
+	Out
+};
 
 TCHAR logPath[MAX_PATH];
 
@@ -95,12 +118,18 @@ static ISharedProxyInterface* ProxyInterface;
 BreakPointContainer BreakpointMap;
 std::stack<DebuggerFrame*> DebuggerStack;
 std::map<std::string, std::wstring> NodePathToFileNameMap;
+std::map<const UStruct*, TArray<BYTE>*> NodeToOriginalDataMap;
 #define currentStackDepth static_cast<int>(DebuggerStack.size())
 bool pendingAttach = false;
 bool pendingDetach = false;
-bool isStepping = false;
+bool IsAttached = false;
+StepState steppingState = StepState::Not;
 int steppingMinStackDepth = 0;
 bool resume = false;
+
+
+typedef void (*tNativeFunction) (UObject* Context, FFrame* Stack, void* Result);
+tNativeFunction* GNatives;
 
 
 struct LexMsg
@@ -135,243 +164,306 @@ void SendMsgToLEX(const wstring& wstr, DebuggerFrame* stackFrame = nullptr) {
 	}
 }
 
-// ======================================================================
-// CallFunction hook
-// ======================================================================
-//typedef void (*tCallFunction) (UObject* Context, FFrame* Stack, void* Result, UFunction* Function);
-//tCallFunction CallFunction = nullptr;
-//tCallFunction CallFunction_orig = nullptr;
-//void CallFunction_hook(UObject* Context, FFrame* Stack, void* Result, UFunction* Function)
-//{
-//	constexpr int FUNC_NATIVE = 1024;
-//	bool needPop = false;
-//	if (Function->iNative || Function->FunctionFlags & FUNC_NATIVE)
-//	{
-//		//Native functions will not be executed by ProcessInternal, but should still be in the call stack
-//		const auto nodePathString = std::string(Function->GetFullPath());
-//		DebuggerFrame debugFrame;
-//		debugFrame.Node = Stack->Node;
-//		debugFrame.Object = Stack->Object;
-//		debugFrame.Locals = Stack->Locals;
-//		debugFrame.OutParms = Stack->OutParms;
-//		debugFrame.CodeBaseAddr = Stack->Code;
-//		debugFrame.CurrentPosition = 0;
-//		debugFrame.PreviousFrame = DebuggerStack.empty() ? nullptr : DebuggerStack.top();
-//		debugFrame.NativeFunc = Function;
-//		debugFrame.NodePath = nodePathString.c_str();
-//		debugFrame.NodePathLength = static_cast<USHORT>(nodePathString.length());
-//		if (const auto pair = NodePathToFileNameMap.find(nodePathString); pair != NodePathToFileNameMap.end())
-//		{
-//			debugFrame.FileName = pair->second.c_str();
-//			debugFrame.FileNameLength = static_cast<USHORT>(pair->second.length());
-//		}
-//		else
-//		{
-//			debugFrame.FileName = nullptr;
-//		}
-//		DebuggerStack.push(&debugFrame);
-//		needPop = true;
-//	}
-//
-//	CallFunction_orig(Context, Stack, Result, Function);
-//
-//	if (needPop)
-//	{
-//		DebuggerStack.pop();
-//	}
-//}
-
-void breakState()
+static HHOOK msgHook = nullptr;
+LRESULT CALLBACK wndProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-	isStepping = false;
+	if (nCode >= HC_ACTION)
+	{
+		const auto msgStruct = reinterpret_cast<LPCWPSTRUCT>(lParam);
+		if (msgStruct->message == WM_APP + 'R' + 'S' + 'M')
+		{
+			switch (msgStruct->wParam)
+			{
+			case CMD_StepInto:
+				steppingState = StepState::In;
+				break;
+			case CMD_StepOver:
+				steppingState = StepState::Over;
+				steppingMinStackDepth = currentStackDepth;
+				break;
+			case CMD_StepOut:
+				steppingState = StepState::Out;
+				steppingMinStackDepth = currentStackDepth - 1;
+				break;
+			default:
+				steppingState = StepState::Not;
+				break;
+			}
+			resume = true;
+			PostMessage(nullptr, WM_ACTIVATE, 1, 0);
+		}
+	}
+	return CallNextHookEx(nullptr, nCode, wParam, lParam);
+}
 
-	SendMsgToLEX(L"Break", DebuggerStack.top());
+void breakState(const bool clearBreakPoint = false)
+{
+	steppingState = StepState::Not;
+
+
+	SendMsgToLEX(clearBreakPoint ? L"BreakAndClear" : L"Break", DebuggerStack.top());
+
+	msgHook = SetWindowsHookEx(WH_CALLWNDPROC, wndProc, nullptr, GetCurrentThreadId());
 
 	MSG msg;
     BOOL bRet; 
 	while ((bRet = GetMessage(&msg, nullptr, 0, 0)) != 0)
 	{
-		if (bRet == -1 || msg.message == WM_CLOSE)
+
+		writeln(L"Break: %d", msg.message);
+		if (bRet == -1 || msg.message == WM_CLOSE || msg.message == WM_QUIT || msg.message == WM_NCXBUTTONUP)
 		{
 			msg.message = WM_QUIT;
 			pendingDetach = true;
 			break;
 		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
 		if (resume)
 		{
 			resume = false;
 			break;
 		}
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
 	}
+	UnhookWindowsHookEx(msgHook);
     if (msg.message == WM_QUIT)
     {
 		PostQuitMessage(static_cast<int>(msg.wParam));
     }
 }
 
-__forceinline bool ShouldBreak(const std::string& nodePathString, const unsigned short location)
+void GetOriginalOpcode(const FFrame* Stack, long long& opcodePosition, BYTE& originalOpcode)
 {
-	return isStepping && currentStackDepth <= steppingMinStackDepth || BreakpointMap.HasBreakPoint(nodePathString, location);
+	const auto node = Stack->Node;
+	const auto opCodeAddr = Stack->Code - 1;
+	opcodePosition = opCodeAddr - node->Script.Data;
+	const auto originalScriptData = NodeToOriginalDataMap.at(node)->Data;
+	originalOpcode = originalScriptData[opcodePosition];
 }
 
-// ======================================================================
-// ExecutionLoop detour
-// ======================================================================
-typedef void (*tNativeFunction) (UObject* Context, FFrame* Stack, void* Result);
-void* ExecutionLoop = nullptr;
-void ExecutionLoop_hook(UObject* Context, FFrame* Stack, void* Result, const tNativeFunction* GNatives)
+void ProcessStep(const FFrame* Stack)
+{
+	if (steppingState == StepState::In)
+	{
+		steppingState = StepState::Over;
+		steppingMinStackDepth = currentStackDepth;
+	}
+	if (steppingState == StepState::Over && currentStackDepth <= steppingMinStackDepth)
+	{
+		if (*Stack->Code == OpCodes::BREAKPOINT)
+		{
+			steppingState = StepState::Not;
+			return;
+		}
+		*Stack->Code = OpCodes::SHADOW_BREAKPOINT;
+	}
+}
+
+void SetBreakPoints(const std::string& nodePath, const UStruct* node, TArray<BYTE>* originalScript)
+{
+	if (const auto pair = NodeToOriginalDataMap.find(node); pair != NodeToOriginalDataMap.end())
+	{
+		originalScript = pair->second;
+		//restore the bytecode to its original state
+		memcpy(node->Script.Data, originalScript->Data, originalScript->Max);
+	}
+	else if (originalScript == nullptr)
+	{
+		//should never happen, but if it does, better to not set any breakpoints than to crash
+		return;
+	}
+	else
+	{
+		originalScript->Count = node->Script.Count;
+		const int size = node->Script.Max;
+		originalScript->Max = size;
+		originalScript->Data = static_cast<BYTE*>(malloc(size));
+		//save the original state of the bytecode
+		memcpy(originalScript->Data, node->Script.Data, size);
+		NodeToOriginalDataMap[node] = originalScript;
+	}
+	if (BreakpointMap.ContainsFunc(nodePath))
+	{
+
+		const auto breakPointPositions = BreakpointMap.GetBreakPoints(nodePath);
+
+		for (const USHORT position : breakPointPositions)
+		{
+			node->Script.Data[position] = OpCodes::BREAKPOINT;
+		}
+	}
+}
+
+void execBREAKPOINT(UObject* Context, FFrame* Stack, void* Result)
 {
 	const auto node = Stack->Node;
 
 	const auto nodePathString = std::string(node->GetFullPath());
+	
+	const auto opCodeAddr = Stack->Code - 1;
+	const auto opcodePosition = opCodeAddr - node->Script.Data;
+	const auto originalScriptData = NodeToOriginalDataMap.at(node)->Data;
+	const auto originalOpcode = originalScriptData[opcodePosition];
 
-	BYTE* beginOffset = node->Script.Data;
+	//These opcodes are checked in loop conditions instead of being executed, so the opcode must be restored, and the instruction pointer reset.
+	const bool isNonExecutableOpCode = originalOpcode == OpCodes::Return || originalOpcode == OpCodes::IteratorNext || originalOpcode == OpCodes::IteratorPop;
 
-	DebuggerFrame debugFrame;
-	debugFrame.Node = node;
-	debugFrame.Object = Stack->Object;
-	debugFrame.Locals = Stack->Locals;
-	debugFrame.OutParms = Stack->OutParms;
-	debugFrame.CodeBaseAddr = beginOffset;
-	debugFrame.CurrentPosition = 0;
-	debugFrame.PreviousFrame = DebuggerStack.empty() ? nullptr : DebuggerStack.top();
-	debugFrame.NativeFunc = nullptr;
-	debugFrame.NodePath = nodePathString.c_str();
-	debugFrame.NodePathLength = static_cast<USHORT>(nodePathString.length());
-	if (const auto pair = NodePathToFileNameMap.find(nodePathString); pair != NodePathToFileNameMap.end())
+	//There's no way to restore the breakpoint opcode at this position before it might next be hit, so if it's not a shadow breakpoint, we need to remove it for consistency
+	const bool clearBreakpoint = isNonExecutableOpCode && *(Stack->Code - 1) == OpCodes::BREAKPOINT;
+
+	if (clearBreakpoint)
 	{
-		debugFrame.FileName = pair->second.c_str();
-		debugFrame.FileNameLength = static_cast<USHORT>(pair->second.length());
+		BreakpointMap.RemoveBreakPoint(nodePathString, opcodePosition);
+	}
+
+	DebuggerStack.top()->CurrentPosition = opcodePosition;
+
+	breakState(clearBreakpoint);
+
+	//passing a nullptr is be safe since the original script must be in the map at this point
+	SetBreakPoints(nodePathString, node, nullptr);
+	
+	if (isNonExecutableOpCode)
+	{
+		Stack->Code[opcodePosition] = originalOpcode;
+		Stack->Code--;
+		return;
+	}
+
+	//opcode is executable
+	GNatives[originalOpcode](Context, Stack, Result);
+
+	ProcessStep(Stack);
+}
+
+
+void execSHADOW_BREAKPOINT(UObject* Context, FFrame* Stack, void* Result)
+{
+	const auto node = Stack->Node;
+	const auto opCodeAddr = Stack->Code - 1;
+	const auto opcodePosition = opCodeAddr - node->Script.Data;
+	const auto originalScriptData = NodeToOriginalDataMap.at(node)->Data;
+	const auto originalOpcode = originalScriptData[opcodePosition];
+	Stack->Code[opcodePosition] = originalOpcode;
+	if (steppingState != StepState::Not && currentStackDepth <= steppingMinStackDepth)
+	{
+		execBREAKPOINT(Context, Stack, Result);
 	}
 	else
 	{
-		debugFrame.FileName = nullptr;
+		Stack->Code--;
 	}
+}
 
-	DebuggerStack.push(&debugFrame);
-
-	BYTE buff[64];
-	while (*Stack->Code != (BYTE)OpCodes::Return)
+// ProcessInternal hook
+// ======================================================================
+typedef void (*tProcessInternal)(UObject* Context, FFrame* Stack, void* Result);
+tProcessInternal ProcessInternal = nullptr;
+tProcessInternal ProcessInternal_orig = nullptr;
+void ProcessInternal_hook(UObject* Context, FFrame* Stack, void* Result)
+{
+	if (IsAttached)
 	{
-		if (!pendingDetach)
+		const auto node = Stack->Node;
+		const auto nodePathString = std::string(node->GetFullPath());
+
+		BYTE* beginOffset = node->Script.Data;
+
+		DebuggerFrame debugFrame;
+		debugFrame.Stack = Stack;
+		debugFrame.Node = node;
+		debugFrame.Object = Stack->Object;
+		debugFrame.Locals = Stack->Locals;
+		debugFrame.OutParms = Stack->OutParms;
+		debugFrame.CodeBaseAddr = beginOffset;
+		debugFrame.CurrentPosition = 0;
+		debugFrame.PreviousFrame = DebuggerStack.empty() ? nullptr : DebuggerStack.top();
+		debugFrame.NativeFunc = nullptr;
+		debugFrame.NodePath = nodePathString.c_str();
+		debugFrame.NodePathLength = static_cast<USHORT>(nodePathString.length());
+		if (const auto pair = NodePathToFileNameMap.find(nodePathString); pair != NodePathToFileNameMap.end())
 		{
-			const auto location = static_cast<USHORT>(Stack->Code - beginOffset);
-			debugFrame.CurrentPosition = location;
-			if (ShouldBreak(nodePathString, location))
+			debugFrame.FileName = pair->second.c_str();
+			debugFrame.FileNameLength = static_cast<USHORT>(pair->second.length());
+		}
+		else
+		{
+			debugFrame.FileName = nullptr;
+		}
+		DebuggerStack.push(&debugFrame);
+
+		TArray<BYTE> originalScript;
+
+		SetBreakPoints(nodePathString, node, &originalScript);
+
+		ProcessStep(Stack);
+
+		ProcessInternal_orig(Context, Stack, Result);
+
+		if (originalScript.Data != nullptr)
+		{
+			NodeToOriginalDataMap.erase(node);
+
+			//restore the bytecode to its original state
+			memcpy(node->Script.Data, originalScript.Data, originalScript.Max);
+			free(originalScript.Data);
+		}
+
+		DebuggerStack.pop();
+		if (steppingState == StepState::Not)
+		{
+			return;
+		}
+		if (currentStackDepth == 0)
+		{
+			steppingMinStackDepth = 0;
+			steppingState = StepState::Over;
+			return;
+		}
+		if (steppingState == StepState::In || steppingState == StepState::Over && currentStackDepth + 1 <= steppingMinStackDepth )
+		{
+			steppingState = StepState::Out;
+			steppingMinStackDepth = currentStackDepth;
+		}
+		if (steppingState == StepState::Out && steppingMinStackDepth == currentStackDepth)
+		{
+			const auto debugger_frame = DebuggerStack.top();
+			debugger_frame->CurrentPosition = debugger_frame->Stack->Code - debugger_frame->CodeBaseAddr;
+			breakState();
+			SetBreakPoints(debugger_frame->NodePath, debugger_frame->Node, nullptr);
+			if (steppingState == StepState::Not || steppingState == StepState::Out)
 			{
-				breakState();
+				return;
+			}
+			if (debugger_frame->Stack->Code[0] != OpCodes::Return)
+			{
+				//stepping in or over would break if we were mid-statement, but LEX won't allow that. 
+				ProcessStep(debugger_frame->Stack);
 			}
 		}
-		const int idx = *Stack->Code++;
-		GNatives[idx](Context, Stack, buff);
 	}
-	if (!pendingDetach)
+	else
 	{
-		const auto location = static_cast<USHORT>(Stack->Code - beginOffset);
-		debugFrame.CurrentPosition = location;
-		if (ShouldBreak(nodePathString, location))
-		{
-			breakState();
-		}
-	}
-	Stack->Code++; //skip Return opcode
-	const int idx = *Stack->Code++;
-	GNatives[idx](Context, Stack, Result); //execute statement that places return value in Result
-
-	DebuggerStack.pop();
-	if (steppingMinStackDepth < 1)
-	{
-		steppingMinStackDepth = 1;
+		ProcessInternal_orig(Context, Stack, Result);
 	}
 }
 
-bool PatchMemory(const void* patch, const SIZE_T patchSize)
+void AttachDebugger()
 {
-	//make the memory we're going to patch writeable
-	DWORD  oldProtect;
-	if (!VirtualProtect(ExecutionLoop, patchSize, PAGE_EXECUTE_READWRITE, &oldProtect))
-		return false;
-
-	//overwrite with our patch
-	memcpy(ExecutionLoop, patch, patchSize);
-
-	//restore the memory's old protection level
-	VirtualProtect(ExecutionLoop, patchSize, oldProtect, &oldProtect);
-	FlushInstructionCache(GetCurrentProcess(), ExecutionLoop, patchSize);
-	return true;
-}
-
-bool AttachDebugger()
-{
-	//This won't work properly until LEBinkProxy has been updated
-	//if (const auto rc = ProxyInterface->InstallHook(SLHHOOK "CallFunction", CallFunction, CallFunction_hook, (void**)&CallFunction_orig);
-	//	rc != SPIReturn::Success)
-	//{
-	//	writeln(L"Attach - failed to hook CallFunction: %d / %s", rc, SPIReturnToString(rc));
-	//	//return false;
-	//}
-
-	BYTE patch[] = { 
-#if defined GAME_LE1
-					0x4c, 0x8d, 0x0d, 0x5c, 0xf2, 0x5a, 0x01, //LEA R9, [GNatives] //load the address of the native function array into the 4th argument register
-#elif defined GAME_LE2
-					0x4c, 0x8d, 0x0d, 0x1c, 0x08, 0x5d, 0x01, //LEA R9, [GNatives] //load the address of the native function array into the 4th argument register
-#elif defined GAME_LE3
-					0x4c, 0x8d, 0x0d, 0x14, 0xf8, 0x6f, 0x01, //LEA R9, [GNatives] //load the address of the native function array into the 4th argument register
-#endif
-					0x4C, 0x8B, 0xC5, //MOV R8, RBP //Move the Result pointer into the 3rd argument register
-					0x48, 0x8B, 0xD3, //MOV RDX, RBX //Move the FFrame pointer into the 2nd argument register
-					0x48, 0x89, 0xF9, //MOV RCX, RDI //Move the this pointer into the 1st argument register
-					0x49, 0xBE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV R14, 0xFFFFFFFFFFFFFFFF //put address of ExecutionLoop_hook into R14 (actual address filled in at runtime) 
-					0x41, 0xFF, 0xD6,  //CALL R14 //Call ExecutionLoop_hook
-
-					//remaining bytes are NOPs of various sizes: https://stackoverflow.com/questions/43991155/what-does-nop-dword-ptr-raxrax-x64-assembly-instruction-do/50594130#50594130
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-#if defined GAME_LE1 || defined GAME_LE2
-					0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,
-					0x0F, 0x1F, 0x44, 0x00, 0x00
-#elif defined GAME_LE3
-					0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00
-#endif
-	};
-
-	//place the absolute address of ExecutionLoop_hook into the patch
-	void* funcPtr = ExecutionLoop_hook;
-	memcpy(patch + 18, &funcPtr, sizeof(funcPtr));
-
-	return PatchMemory(patch, sizeof(patch));
-}
-
-bool DetachDebugger()
-{
-	//This won't work properly until LEBinkProxy has been updated
-	//if (const auto rc = ProxyInterface->UninstallHook(SLHHOOK "CallFunction");
-	//	rc != SPIReturn::Success)
-	//{
-	//	writeln(L"Detach - failed to unhook CallFunction: %d / %s", rc, SPIReturnToString(rc));
-	//	//return false;
-	//}
-
-#if defined GAME_LE1
-	const BYTE originalExecutionLoopBytes[] = { 0x4c, 0x8d, 0x35, 0x5c, 0xf2, 0x5a, 0x01, 0x80, 0x38, 0x04, 0x74, 0x30, 0x0f, 0x1f, 0x80, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8b, 0x43, 0x24, 0x4c, 0x8d, 0x44, 0x24, 0x30, 0x48, 0x8b, 0xd3, 0x0f, 0xb6, 0x08, 0x48, 0xff, 0xc0, 0x48, 0x89, 0x43, 0x24, 0x8b, 0xc1, 0x48, 0x8b, 0x4b, 0x1c, 0x41, 0xff, 0x14, 0xc6, 0x48, 0x8b, 0x43, 0x24, 0x80, 0x38, 0x04, 0x75, 0xd7, 0x48, 0xff, 0xc0, 0x4c, 0x8b, 0xc5, 0x48, 0x89, 0x43, 0x24, 0x48, 0x8b, 0xd3, 0x0f, 0xb6, 0x08, 0x48, 0xff, 0xc0, 0x48, 0x89, 0x43, 0x24, 0x8b, 0xc1, 0x48, 0x8b, 0x4b, 0x1c, 0x41, 0xff, 0x14, 0xc6, 0x48, 0x8b, 0x43, 0x24, 0x4c, 0x8b, 0xb4, 0x24, 0x80, 0x00, 0x00, 0x00, 0x80, 0x38, 0x41, 0x75, 0x17, 0x48, 0x8b, 0x4b, 0x1c, 0x48, 0xff, 0xc0, 0x4c, 0x8b, 0xc5, 0x48, 0x89, 0x43, 0x24, 0x48, 0x8b, 0xd3, 0xff, 0x15, 0xe6, 0xf3, 0x5a, 0x01 };
-#elif defined GAME_LE2
-	const BYTE originalExecutionLoopBytes[] = { 0x4c, 0x8d, 0x35, 0x1c, 0x08, 0x5d, 0x01, 0x80, 0x38, 0x04, 0x74, 0x30, 0x0f, 0x1f, 0x80, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8b, 0x43, 0x24, 0x4c, 0x8d, 0x44, 0x24, 0x30, 0x48, 0x8b, 0xd3, 0x0f, 0xb6, 0x08, 0x48, 0xff, 0xc0, 0x48, 0x89, 0x43, 0x24, 0x8b, 0xc1, 0x48, 0x8b, 0x4b, 0x1c, 0x41, 0xff, 0x14, 0xc6, 0x48, 0x8b, 0x43, 0x24, 0x80, 0x38, 0x04, 0x75, 0xd7, 0x48, 0xff, 0xc0, 0x4c, 0x8b, 0xc5, 0x48, 0x89, 0x43, 0x24, 0x48, 0x8b, 0xd3, 0x0f, 0xb6, 0x08, 0x48, 0xff, 0xc0, 0x48, 0x89, 0x43, 0x24, 0x8b, 0xc1, 0x48, 0x8b, 0x4b, 0x1c, 0x41, 0xff, 0x14, 0xc6, 0x48, 0x8b, 0x43, 0x24, 0x4c, 0x8b, 0xb4, 0x24, 0x80, 0x00, 0x00, 0x00, 0x80, 0x38, 0x41, 0x75, 0x17, 0x48, 0x8b, 0x4b, 0x1c, 0x48, 0xff, 0xc0, 0x4c, 0x8b, 0xc5, 0x48, 0x89, 0x43, 0x24, 0x48, 0x8b, 0xd3, 0xff, 0x15, 0xa6, 0x09, 0x5d, 0x01 };
-#elif defined GAME_LE3
-	const BYTE originalExecutionLoopBytes[] = { 0x4c, 0x8d, 0x35, 0x14, 0xf8, 0x6f, 0x01, 0x80, 0x38, 0x04, 0x74, 0x29, 0x48, 0x8b, 0x43, 0x28, 0x4c, 0x8d, 0x44, 0x24, 0x30, 0x48, 0x8b, 0xd3, 0x0f, 0xb6, 0x08, 0x48, 0xff, 0xc0, 0x48, 0x89, 0x43, 0x28, 0x8b, 0xc1, 0x48, 0x8b, 0x4b, 0x20, 0x41, 0xff, 0x14, 0xc6, 0x48, 0x8b, 0x43, 0x28, 0x80, 0x38, 0x04, 0x75, 0xd7, 0x48, 0xff, 0xc0, 0x4c, 0x8b, 0xc5, 0x48, 0x89, 0x43, 0x28, 0x48, 0x8b, 0xd3, 0x0f, 0xb6, 0x08, 0x48, 0xff, 0xc0, 0x48, 0x89, 0x43, 0x28, 0x8b, 0xc1, 0x48, 0x8b, 0x4b, 0x20, 0x41, 0xff, 0x14, 0xc6, 0x48, 0x8b, 0x43, 0x28, 0x4c, 0x8b, 0xb4, 0x24, 0x80, 0x00, 0x00, 0x00, 0x80, 0x38, 0x41, 0x75, 0x17, 0x48, 0x8b, 0x4b, 0x20, 0x48, 0xff, 0xc0, 0x4c, 0x8b, 0xc5, 0x48, 0x89, 0x43, 0x28, 0x48, 0x8b, 0xd3, 0xff, 0x15, 0xa5, 0xf9, 0x6f, 0x01 };
-#endif
+	GNatives[OpCodes::BREAKPOINT] = execBREAKPOINT;
+	GNatives[OpCodes::SHADOW_BREAKPOINT] = execSHADOW_BREAKPOINT;
 	
-	return PatchMemory(originalExecutionLoopBytes, sizeof(originalExecutionLoopBytes));
+
+	SendMsgToLEX(std::wstring(L"Attached"));
+	IsAttached = true;
+}
+
+void DetachDebugger()
+{
+	resume = false;
+	BreakpointMap.ClearBreakPoints();
+	SendMsgToLEX(std::wstring(L"Detached"));
+	IsAttached = false;
 }
 
 
@@ -388,15 +480,11 @@ void GameEngineTick_hook(UGameEngine* Context, FLOAT deltaSeconds)
 	{
 		pendingAttach = false;
 		AttachDebugger();
-		SendMsgToLEX(std::wstring(L"Attached"));
 	}
 	else if (pendingDetach)
 	{
 		pendingDetach = false;
-		resume = false;
-		BreakpointMap.ClearBreakPoints();
 		DetachDebugger();
-		SendMsgToLEX(std::wstring(L"Detached"));
 	}
 	GameEngineTick_orig(Context, deltaSeconds);
 }
@@ -418,37 +506,12 @@ void SetLinker_hook(UObject* Context, ULinkerLoad* Linker, int LinkerIndex)
 	SetLinker_orig(Context, Linker, LinkerIndex);
 }
 
-// ProcessEvent hook
-// ======================================================================
-typedef void (*tProcessEvent)(UObject* Context, UFunction* Function, void* Parms, void* Result);
-tProcessEvent ProcessEvent = nullptr;
-tProcessEvent ProcessEvent_orig = nullptr;
-void ProcessEvent_hook(UObject* Context, UFunction* Function, void* Parms, void* Result)
-{
-	
-	ProcessEvent_orig(Context, Function, Parms, Result);
-}
-
 
 template<typename T>
 T Read(BYTE* ptr, const int offset)
 {
 	return *reinterpret_cast<T*>(ptr + offset);
 }
-
-enum PipeCommands
-{
-	CMD_AttachDebugger = 1,
-	CMD_DetachDebugger = 2,
-	CMD_BreakImmediate = 3,
-	CMD_Breakpoint = 4,
-		CMD_Add = 5,
-		CMD_Remove = 6,
-	CMD_StepInto = 7,
-	CMD_StepOver = 8,
-	CMD_StepOut = 9,
-	CMD_Resume = 10
-};
 
 void ProcessCommand(BYTE* str, DWORD len)
 {
@@ -459,6 +522,8 @@ void ProcessCommand(BYTE* str, DWORD len)
 		break;
 	case CMD_DetachDebugger:
 		pendingDetach = true;
+		steppingState = StepState::Not;
+		BreakpointMap.ClearBreakPoints();
 		resume = true;
 		break;
 	case CMD_Breakpoint:
@@ -478,30 +543,7 @@ void ProcessCommand(BYTE* str, DWORD len)
 	}
 	case CMD_BreakImmediate:
 		steppingMinStackDepth = INT_MAX;
-		isStepping = true;
-		break;
-
-	/*
-	 * BreakState commands (must only be issued if debugger is in the break state)
-	 */
-
-	case CMD_StepInto:
-		steppingMinStackDepth = INT_MAX;
-		isStepping = true;
-		resume = true;
-		break;
-	case CMD_StepOver:
-		steppingMinStackDepth = currentStackDepth;
-		isStepping = true;
-		resume = true;
-		break;
-	case CMD_StepOut:
-		steppingMinStackDepth = currentStackDepth - 1;
-		isStepping = true;
-		resume = true;
-		break;
-	case CMD_Resume:
-		resume = true;
+		steppingState = StepState::Over;
 		break;
 	}
 }
@@ -515,7 +557,6 @@ SPI_IMPLEMENT_ATTACH
 
 	ProxyInterface = InterfacePtr;
 
-
 #if defined GAME_LE1
 	char* ExecutionLoopPattern = "4c 8d 35 5c f2 5a 01 80 38 04 74 30 0f 1f 80 00 00 00 00";
 #elif defined GAME_LE2
@@ -524,12 +565,15 @@ SPI_IMPLEMENT_ATTACH
 	char* ExecutionLoopPattern = "4c 8d 35 14 f8 6f 01 80 38 04 74 29 48 8b 43 28";
 #endif
 
+	void* ExecutionLoop;
 	if (const auto rc = InterfacePtr->FindPattern(&ExecutionLoop, ExecutionLoopPattern);
 		rc != SPIReturn::Success)
 	{
 		writeln(L"Attach - failed to find ExecutionLoop pattern: %d / %s", rc, SPIReturnToString(rc));
 		return false;
 	}
+	const auto gNativesLEA = static_cast<BYTE*>(ExecutionLoop);
+	GNatives = reinterpret_cast<tNativeFunction*>(gNativesLEA + 7 + *reinterpret_cast<int32_t*>(gNativesLEA + 3));
 
 #if defined GAME_LE1
 	char* GameEngineTickPattern = "48 8b c4 55 53 56 57 41 54 41 56 41 57 48 8d a8 e8 fd ff ff";
@@ -552,15 +596,6 @@ SPI_IMPLEMENT_ATTACH
 		return false;
 	}
 
-	/*if (auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&CallFunction), "40 55 53 56 57 41 54 41 55 41 56 41 57 48 81 EC A8 04 00 00 48 8D 6C 24 20 48 C7 45 68 FE FF FF FF");
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to find CallFunction pattern: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}*/
-
-
-
 	if (const auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&SetLinker), "4c 8b 51 2c 4c 8b c9 4d 85 d2 74 39 48 85 d2 74 1c 48 8b c1");
 		rc != SPIReturn::Success)
 	{
@@ -574,8 +609,16 @@ SPI_IMPLEMENT_ATTACH
 		return false;
 	}
 
-	/*INIT_FIND_PATTERN_POSTHOOK(ProcessEvent, LE_PATTERN_POSTHOOK_PROCESSEVENT);
-	INIT_HOOK_PATTERN(ProcessEvent);*/
+#if defined GAME_LE1
+	char* ProcessInternalPostHookPattern = ;
+#elif defined GAME_LE2
+	char* ProcessInternalPostHookPattern = ;
+#elif defined GAME_LE3
+	char* ProcessInternalPostHookPattern = /*"40 53 55 56 57*/ "48 81 ec 88 00 00 00 48 8b 05 05 62 6d 01";
+#endif
+
+	INIT_FIND_PATTERN_POSTHOOK(ProcessInternal, ProcessInternalPostHookPattern);
+	INIT_HOOK_PATTERN(ProcessInternal);
 
 
 #if defined GAME_LE1
