@@ -11889,6 +11889,10 @@ class UWorld : public UObject
 public:
 	unsigned char                                      UnknownData00[ 0x338 ];                           		// 0x0060 (0x0338) MISSED OFFSET
 
+	// Document offsets noted in Ghidra here
+
+	// 0x2D8 = DominantDirectionalLight (UDominantDirectionalLightComponent*)
+
 private:
 	static UClass* pClassPointer;
 

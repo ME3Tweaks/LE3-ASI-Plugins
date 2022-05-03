@@ -18,13 +18,10 @@
     <ClCompile Include="DebugLogger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LoggingHooks.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="LoggingHooks.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="HookPrototypes.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -126,6 +126,9 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /y "C:\Users\mgame\source\repos\ME3Tweaks\LE3-ASI-Plugins\x64\Debug\LE3DebugLogger.asi" "B:\SteamLibrary\steamapps\common\Mass Effect Legendary Edition\Game\ME3\Binaries\Win64\ASI\LE3DebugLogger.asi"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -138,6 +141,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ShowIncludes>true</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,7 +152,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DebugLogger.cpp" />
-    <ClCompile Include="LoggingHooks.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LE3-SDK\LE3-SDK.vcxproj">
@@ -156,7 +159,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="LoggingHooks.h" />
+    <ClInclude Include="HookPrototypes.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

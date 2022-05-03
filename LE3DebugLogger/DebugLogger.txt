@@ -1,0 +1,6 @@
+ME3Tweaks ASI Logger - By Mgamerz
+DebugLogger v2
+[0.0] Logging to C:\Users\mgame\source\repos\ME3Tweaks\LE3-ASI-Plugins\LE3DebugLogger\DebugLogger.txt
+--------------------------------------------------------
+Binary Table of Contents has 5452 hash table entries.
+Binary Table of Contents has 9691 file entries.

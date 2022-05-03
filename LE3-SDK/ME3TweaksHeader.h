@@ -1,3 +1,4 @@
+#pragma once
 #include <stdio.h>
 #include <io.h>
 #include <fcntl.h>     /* for _O_TEXT and _O_BINARY */  
