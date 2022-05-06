@@ -198,8 +198,8 @@ bool RegisterTFC_hook(FString* tfcPath)
 bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 {
 	// Works, just commented out as it prints out a ton of things.
-	//INIT_FIND_PATTERN_POSTHOOK(LogInternal, /*"40 57 48 83 ec */"40 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 50 48 89 74 24 60 48 8b da 33 f6 48 89 74 24 28 48 89 74 24 30");
-	//INIT_HOOK_PATTERN(LogInternal);
+	INIT_FIND_PATTERN_POSTHOOK(LogInternal, /*"40 57 48 83 ec */"40 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 50 48 89 74 24 60 48 8b da 33 f6 48 89 74 24 28 48 89 74 24 30");
+	INIT_HOOK_PATTERN(LogInternal);
 
 	// WarnInternal seems like it prints to the debug output so I don't think it needs hooked
 
@@ -306,21 +306,25 @@ uLinkerPreload LinkerLoadPreload = nullptr;
 uLinkerPreload LinkerLoadPreload_orig = nullptr;
 void LinkerLoadPreload_hook(UnLinker* linker, UObject* objectToLoad)
 {
+
+	// This prints out pretty much everything that loads
+	// Not sure how to properly hook on preload here
+	
 	// This is used when loading the ref shader cache file, the game seems to actually be doing a
 	// seek free load on the CacheObject, which loads the file via preload
-	auto fullPath = objectToLoad->GetFullPath();
-	if (isPartOf(fullPath, "CacheObject"))
-	{
-		//std::this_thread::sleep_for(std::chrono::seconds(8));
+	//auto fullPath = objectToLoad->GetFullPath();
+	////if (isPartOf(fullPath, "CacheObject"))
+	////{
+	//	//std::this_thread::sleep_for(std::chrono::seconds(8));
 
-		// I took this right out of Ghidra, cause I don't want to deal with a FQWORD (Isn't this just a int64?)
-		int64* objectFlags = (int64*)((int64)objectToLoad + 0xC);
-		if ((*objectFlags & 0x20000000000) != 0) {
+	//	// I took this right out of Ghidra, cause I don't want to deal with a FQWORD (Isn't this just a int64?)
+	//int64* objectFlags = (int64*)((int64)objectToLoad + 0xC);
+	//if ((*objectFlags & 0x20000000000) != 0) {
 
-			// Object needs loaded, so the file is going to be loaded.
-			writeln("SeekFreeLoading package (preload): %hs", objectToLoad->GetFullPath());
-		}
-	}
+	//	// Object needs loaded, so the file is going to be loaded.
+	//	writeln("SeekFreeLoading object: %hs", objectToLoad->GetFullPath());
+	//}
+	////}
 	LinkerLoadPreload_orig(linker, objectToLoad);
 }
 
@@ -413,7 +417,7 @@ SPI_IMPLEMENT_ATTACH
 
 	// ---------------
 	// Logging functions to hook up for writing to disk
-	//hookLoggingFunctions(InterfacePtr);
+	hookLoggingFunctions(InterfacePtr);
 
 
 // LOAD PACKAGE PERSISTENT ----------------------------------------------------------------
