@@ -79,49 +79,6 @@ void UnReadFile_hook(void* pointer)
 	UnReadFile_orig(pointer);
 }
 
-
-typedef UObject* (*tLoadPackagePersistent)(int64 param1, const wchar_t* param2, uint32 param3, int64* param4, uint32* param5);
-tLoadPackagePersistent LoadPackagePersistent = nullptr;
-tLoadPackagePersistent LoadPackagePersistent_orig = nullptr;
-void LoadPackagePersistent_hook(int64 param1, const wchar_t* packageName, uint32 param3, int64* param4, uint32* param5)
-{
-	writeln("PERSISTENTPACKAGELOAD: %s", (void*)packageName, packageName);
-	LoadPackagePersistent_orig(param1, packageName, param3, param4, param5);
-	//std::this_thread::sleep_for(std::chrono::seconds(1000));
-
-	/*UObject* object = CreateImport_orig(Context, i);
-	if (object == nullptr)
-	{
-		FObjectImport importEntry = Context->ImportMap(i);
-		writeln("Could not resolve #%d: %hs (%hs) in file: %s", -i - 1, importEntry.ObjectName.GetName(), importEntry.ClassName.GetName(), Context->Filename.Data);
-		logger.writeWideLineToLog(wstring_format(L"Could not resolve #%d: %hs (%hs) in file: %s", -i - 1, importEntry.ObjectName.GetName(), importEntry.ClassName.GetName(), Context->Filename.Data));
-		logger.flush();
-	}*/
-}
-
-typedef UObject* (*tLoadPackage)(int64 param1, short* param2, void* param3, void* param4, void* param5, void* param6);
-tLoadPackage LoadPackage = nullptr;
-tLoadPackage LoadPackage_orig = nullptr;
-void LoadPackage_hook(int64 param1, short* param2, void* param3, wchar_t* param4, void* param5, void* param6)
-{
-	//std::this_thread::sleep_for(std::chrono::seconds(8));
-	writeln("PACKAGELOAD %s", param4);
-
-
-	LoadPackage_orig(param1, param2, param3, param4, param5, param6);
-	//writeln("PACKAGELOAD: %s", (void*)packageName, packageName);
-	//LoadPackage_orig(param1, packageName, param3, param4, param5);
-
-	/*UObject* object = CreateImport_orig(Context, i);
-	if (object == nullptr)
-	{
-		FObjectImport importEntry = Context->ImportMap(i);
-		writeln("Could not resolve #%d: %hs (%hs) in file: %s", -i - 1, importEntry.ObjectName.GetName(), importEntry.ClassName.GetName(), Context->Filename.Data);
-		logger.writeWideLineToLog(wstring_format(L"Could not resolve #%d: %hs (%hs) in file: %s", -i - 1, importEntry.ObjectName.GetName(), importEntry.ClassName.GetName(), Context->Filename.Data));
-		logger.flush();
-	}*/
-}
-
 typedef void (*tAppAssertFailed)(char* logFuncName, char* sourceFileName, short errorCode, wchar_t* message);
 tAppAssertFailed appAssertFailed = nullptr;
 tAppAssertFailed appAssertFailed_orig = nullptr;
@@ -189,28 +146,6 @@ tFOutputDeviceLogF FOutputDeviceLogf_orig = nullptr;
 void FOutputDeviceLogf_hook(void* fOutputDevice, int* code, wchar_t* formatStr, void* param1)
 {
 	logMessage(L"appLogf", formatStr, param1, param1);
-
-	if (GPackageFileCache == nullptr)
-	{
-		// Have to prep it
-		auto ptr = (int64*)GPackageFileCacheOffset;
-		GPackageFileCache = (FPackageFileCache*)*ptr;
-	}
-
-	// TEST FINDPACKAGEFILE, GetPackageNameList
-	//wchar_t* findPackage = L"BioP_Nor";
-	//FString outName;
-	//auto foundPkg = GPackageFileCache->FindPackageFile(findPackage, nullptr, outName, nullptr);
-	//if (foundPkg)
-	//{
-	//	logMessage(L"DEBUGLOGGER", L"Found package %s", outName.Data, nullptr);
-	//}
-	//else
-	//{
-	//	logMessage(L"DEBUGLOGGER", L"Failed to find package %s", findPackage, nullptr);
-	//}
-	//TArray<FString> outData;
-	//GPackageFileCache->GetPackageNameList(outData);
 }
 
 #pragma endregion FOutputDevice::Logf
@@ -226,6 +161,7 @@ void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* p
 #pragma endrgion FErrorOutputDevice::Logf
 
 #pragma region UWorld::IsTimeLimitExceeded
+// This isn't really useful...
 typedef bool (*tUWorldIsTimeLimitExceeded)(wchar_t* msgString, double time);
 tUWorldIsTimeLimitExceeded UWorldIsTimeLimitExceeded = nullptr;
 tUWorldIsTimeLimitExceeded UWorldIsTimeLimitExceeded_orig = nullptr;
@@ -236,10 +172,6 @@ bool UWorldIsTimeLimitExceeded_hook(wchar_t* msgString, double time)
 }
 #pragma endrgion UWorld::IsTimeLimitExceeded
 
-#pragma region PackageLoading
-
-
-#pragma endregion PackageLoading
 
 #pragma region TFCRegistering
 typedef bool (*tRegisterTFC)(FString* tfcPath);
@@ -322,39 +254,78 @@ void HookedUFunctionBind(UFunction* functionObj)
 	}
 }
 
-// Searches for the specified byte pattern, which is a 7-byte mov or lea instruction, with the 'source' operand being the address being calculated
-void* findAddressLeaMov(ISharedProxyInterface* InterfacePtr, char* name, char* bytePattern)
-{
-	void* patternAddr;
-	if (const auto rc = InterfacePtr->FindPattern(&patternAddr, bytePattern);
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Failed to find %hs pattern: %d / %s", name, rc, SPIReturnToString(rc));
-		return nullptr; // Will be 0
-	}
 
-	// This is the address of the instruction
-	const auto instruction = static_cast<BYTE*>(patternAddr);
-	const auto RIPaddress = instruction + 7; // Relative Instruction Pointer (after instruction)
-	const auto offset = *reinterpret_cast<int32_t*>(instruction + 3); // Offset listed in the instruction
-	return RIPaddress + offset; // Added together we get the actual address
+#pragma region PackageLoading
+typedef UObject* (*tLoadPackagePersistent)(int64 param1, const wchar_t* param2, uint32 param3, int64* param4, uint32* param5);
+tLoadPackagePersistent LoadPackagePersistent = nullptr;
+tLoadPackagePersistent LoadPackagePersistent_orig = nullptr;
+void LoadPackagePersistent_hook(int64 param1, const wchar_t* packageName, uint32 param3, int64* param4, uint32* param5)
+{
+	writeln("Loading persistent package: %s", packageName);
+	LoadPackagePersistent_orig(param1, packageName, param3, param4, param5);
 }
 
+// Returns a UPackage, but we don't have that defined
+typedef void* (*tLoadPackage)(void* param1, wchar_t* param2, uint32 param3);
+tLoadPackage LoadPackage = nullptr;
+tLoadPackage LoadPackage_orig = nullptr;
+void* LoadPackage_hook(void* param1, wchar_t* packageName, uint32 param3)
+{
+	// FindPackageFile doesn't seem to work. Might need to figure out what parameters it really needs.
+	// The below commented out code crashes the game
+
+	/*std::this_thread::sleep_for(std::chrono::seconds(8));
+	FString outName;
+	wchar_t* language = L"";
+	auto pFound = GPackageFileCache->FindPackageFile(param2, nullptr, outName, language, false);
+	if (pFound)
+	{
+		writeln("Loading package synchronously: %s", outName.Data);
+	}
+	else
+	{
+		writeln("Loading package synchronously: %s", param2);
+	}*/
+
+	writeln("Loading package synchronously: %s", packageName);
+	return LoadPackage_orig(param1, packageName, param3);
+}
 
 typedef uint32(*tAsyncLoadMethod)(UnLinker* linker, int a2, float a3);
-tAsyncLoadMethod dumbFunc = nullptr;
-tAsyncLoadMethod dumbFunc_orig = nullptr;
-uint32 dumbFunc_hook(UnLinker* linker, int a2, float a3)
+tAsyncLoadMethod LoadPackageAsyncTick = nullptr;
+tAsyncLoadMethod LoadPackageAsyncTick_orig = nullptr;
+uint32 LoadPackageAsyncTick_hook(UnLinker* linker, int a2, float a3)
 {
-	//writeln("%p", linkerMaybe);
-/*	auto addr = static_cast<BYTE*>(linkerMaybe);
-	auto packageNameAddr = addr + 0x8;
-	auto address = *reinterpret_cast<wchar_t**>(packageNameAddr);
-	*/
-	auto result = dumbFunc_orig(linker, a2, a3);
-	writeln("Loading package %s, %f%%", linker->PackageName, linker->EstimatedLoadPercentage);
+	auto result = LoadPackageAsyncTick_orig(linker, a2, a3);
+	writeln("Loading package asynchronously: %s, %f%%", linker->PackageName, linker->EstimatedLoadPercentage);
 	return result;
 }
+
+typedef void (*uLinkerPreload)(UnLinker* linker, UObject* objectToLoad);
+uLinkerPreload LinkerLoadPreload = nullptr;
+uLinkerPreload LinkerLoadPreload_orig = nullptr;
+void LinkerLoadPreload_hook(UnLinker* linker, UObject* objectToLoad)
+{
+	// This is used when loading the ref shader cache file, the game seems to actually be doing a
+	// seek free load on the CacheObject, which loads the file via preload
+	auto fullPath = objectToLoad->GetFullPath();
+	if (isPartOf(fullPath, "CacheObject"))
+	{
+		//std::this_thread::sleep_for(std::chrono::seconds(8));
+
+		// I took this right out of Ghidra, cause I don't want to deal with a FQWORD (Isn't this just a int64?)
+		int64* objectFlags = (int64*)((int64)objectToLoad + 0xC);
+		if ((*objectFlags & 0x20000000000) != 0) {
+
+			// Object needs loaded, so the file is going to be loaded.
+			writeln("SeekFreeLoading package (preload): %hs", objectToLoad->GetFullPath());
+		}
+	}
+	LinkerLoadPreload_orig(linker, objectToLoad);
+}
+
+
+#pragma endregion PackageLoading
 
 SPI_IMPLEMENT_ATTACH
 {
@@ -390,6 +361,8 @@ SPI_IMPLEMENT_ATTACH
 	}
 	writeln(L"Initialized DebugLogger");
 
+	LoadCommonClassPointers(InterfacePtr);
+
 	// CreateImport
 	INIT_FIND_PATTERN_POSTHOOK(CreateImport, /*"48 8b c4 55 41*/ "54 41 55 41 56 41 57 48 8b ec 48 83 ec 70 48 c7 45 d0 fe ff ff ff 48 89 58 10 48 89 70 18 48 89 78 20 4c 63 e2");
 	INIT_HOOK_PATTERN(CreateImport);
@@ -402,19 +375,24 @@ SPI_IMPLEMENT_ATTACH
 	//INIT_FIND_PATTERN_POSTHOOK(UnReadFile, /*"40 53 48 83 ec*/ "30 8b 41 34 48 8d 54 24 40 89 41 58 48 8b d9 48 89 49 60");
 	//INIT_HOOK_PATTERN(UnReadFile);
 
-	// 0x7ff74a9df82d DRM free | MOV RCX, qword ptr [GFileManager??]
-	auto addr = findAddressLeaMov(InterfacePtr, "GFileManager", "48 8b 0d 9c dd 67 01 ff d3 90 4c 89 6c 24 60 48 8b 4c 24 58");
-	if (addr != nullptr)
-	{
-		GFileManager = static_cast<FFileManager*>(addr);
-		writeln("Found GFileManager at %p", GFileManager);
-	}
+	// PRELOAD
+	INIT_FIND_PATTERN_POSTHOOK(LinkerLoadPreload, /*"40 55 56 57 41*/ "54 41 55 41 56 41 57 48 8d 6c 24 d9 48 81 ec 90 00 00 00 48 c7 45 e7 fe ff ff ff");
+	INIT_HOOK_PATTERN(LinkerLoadPreload);
 
-	INIT_FIND_PATTERN_POSTHOOK(dumbFunc, /*"48 8b c4 55 56*/ "57 41 54 41 55 41 56 41 57 48 81 ec 80 00 00 00 48 c7 40 90 fe ff ff ff");
-	INIT_HOOK_PATTERN(dumbFunc);
+	// LOADPACKAGE
+	INIT_FIND_PATTERN_POSTHOOK(LoadPackage, /*"48 8b c4 44 89*/"40 18 48 89 48 08 53 56 57 41 56 41 57 48 83 ec 50 48 c7 40 b8 fe ff ff ff");
+	INIT_HOOK_PATTERN(LoadPackage);
+
+	// ASYNC LOAD PACKAGE
+	INIT_FIND_PATTERN_POSTHOOK(LoadPackageAsyncTick, /*"48 8b c4 55 56*/ "57 41 54 41 55 41 56 41 57 48 81 ec 80 00 00 00 48 c7 40 90 fe ff ff ff");
+	INIT_HOOK_PATTERN(LoadPackageAsyncTick);
+
+	// LOAD PACKAGE PERSISTENT
+	//INIT_FIND_PATTERN_POSTHOOK(LoadPackagePersistent, /*"40 53 56 57 41*/ "54 41 55 41 56 41 57 48 81 ec e0 02 00 00 48 c7 84 24 b8 00 00 00 fe ff ff ff");
+	//INIT_HOOK_PATTERN(LoadPackagePersistent);
 
 	// Prevent CreateLinker() from wiping the last status message
-	void* clearInstructionAddress;
+	/*void* clearInstructionAddress;
 	if (const auto rc = InterfacePtr->FindPattern(&clearInstructionAddress, "48 89 77 70 8b c3 48 8b 9c 24 c8 00 00 00 0f 28 74 24 70 0f 28 7c 24 60");
 		rc != SPIReturn::Success)
 	{
@@ -423,31 +401,20 @@ SPI_IMPLEMENT_ATTACH
 	 else
 	{
 		// nop it out
+		// Doesn't work, but a good example of how to nop stuff out.
 		DWORD oldProtection;
 		VirtualProtect(clearInstructionAddress, 4, PAGE_READWRITE, &oldProtection);
 		*(DWORD*)(clearInstructionAddress) = 0x90909090; // 4 nops
 		VirtualProtect(clearInstructionAddress, 4, oldProtection, &oldProtection);
 		writeln(L"Nop'd out last status clear");
-	}
+	}*/
+
+	// END ASYNC LOAD
 
 	// ---------------
 	// Logging functions to hook up for writing to disk
 	//hookLoggingFunctions(InterfacePtr);
 
-//
-//if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&CreateImport), "48 8b c4 55 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 70 48 c7 45 d0 fe ff ff ff 48 89 58 10 48 89 70 18 48 89 78 20 4c 63 e2");
-//	rc != SPIReturn::Success)
-//{
-//	writeln(L"Attach - failed to find CreateImport pattern: %d / %s", rc, SPIReturnToString(rc));
-//	return false;
-//}
-//if (auto const rc = InterfacePtr->InstallHook(MYHOOK "CreateImport", CreateImport, CreateImport_hook, reinterpret_cast<void**>(&CreateImport_orig));
-//	rc != SPIReturn::Success)
-//{
-//	writeln(L"Attach - failed to hook CreateImport: %d / %s", rc, SPIReturnToString(rc));
-//	return false;
-//}
-//writeln(L"Hooked CreateImport");
 
 // LOAD PACKAGE PERSISTENT ----------------------------------------------------------------
 //writeln(L"Initializing LoadPackagePersistent hook...");
@@ -467,22 +434,7 @@ SPI_IMPLEMENT_ATTACH
 //writeln(L"Hooked LoadPackagePersistent");
 
 
-// LOAD PACKAGE VTABLE ----------------------------------------------------------------
-//writeln(L"Initializing LoadPackage hook...");
-//if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&LoadPackage), "4c 89 4c 24 20 48 89 4c 24 08 55 56 57 41 54 41 55 41 56 41 57 48 8b ec 48 81 ec 80 00 00 00 48 c7 45 b8 fe ff ff ff" /*53 56 57 41 54 41 55 41 56 41 57 48 81 ec e0 02 00 00 48 c7 84 24 b8 00 00 00"*/);
-//	rc != SPIReturn::Success)
-//{
-//	writeln(L"Attach - failed to find LoadPackage pattern: %d / %s", rc, SPIReturnToString(rc));
-//	return false;
-//}
 
-//if (auto const rc = InterfacePtr->InstallHook(MYHOOK "LoadPackage", LoadPackage, LoadPackage_hook, reinterpret_cast<void**>(&LoadPackage_orig));
-//	rc != SPIReturn::Success)
-//{
-//	writeln(L"Attach - failed to hook LoadPackage: %d / %s", rc, SPIReturnToString(rc));
-//	return false;
-//}
-//writeln(L"Hooked LoadPackage");
 
 // appAssertFailedHook ----------------------------------------------------------------
 //writeln(L"Initializing appAsssertFailedHook...");
