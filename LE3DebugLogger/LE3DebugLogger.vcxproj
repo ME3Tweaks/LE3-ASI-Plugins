@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DebugLogger.cpp" />
+    <ClCompile Include="Misc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LE3-SDK\LE3-SDK.vcxproj">
