@@ -15,45 +15,24 @@ SPI_PLUGINSIDE_SEQATTACH;
 
 ME3TweaksASILogger logger("DebugLogger v2", "DebugLogger.txt");
 
-// Original Func
+// Prototype for WinAPI DebugOutput string. We don't put this
+// in prototypes cause this is not part of the game
 typedef void (WINAPI* tOutputDebugStringW)(LPCWSTR lpcszString);
-tOutputDebugStringW OutputDebugStringW_Orig = nullptr;
-
-// Our replacement
-void WINAPI OutputDebugStringW_Hook(LPCWSTR lpcszString)
+tOutputDebugStringW OutputDebugStringW_orig = nullptr;
+void WINAPI OutputDebugStringW_hook(LPCWSTR lpcszString)
 {
-	OutputDebugStringW_Orig(lpcszString);
+	OutputDebugStringW_orig(lpcszString);
 	writeMsg(L"%s", lpcszString); // string already has a newline on the end
 	logger.writeWideToLog(std::wstring_view{ lpcszString });
 	logger.flush();
 }
 
 
-// ProcessEvent hook
-//typedef void (*tProcessEvent)(UObject* Context, UFunction* Function, void* Parms, void* Result);
-//tProcessEvent ProcessEvent = nullptr;
-//tProcessEvent ProcessEvent_orig = nullptr;
-//
 //void ProcessEvent_hook(UObject* Context, UFunction* Function, void* Parms, void* Result)
 //{
-//	// LOGGING OTHER STUFF
-//	auto funcFullName = Function->GetFullName();
-//	if (!strcmp(funcFullName, "Function GameFramework.GameAIController.AILog_Internal"))
-//	{
-//		auto rparms = reinterpret_cast<AGameAIController_eventAILog_Internal_Parms*>(Parms);
-//		writeln(L"AILog: [%hs] %s", rparms->LogCategory.GetName(), rparms->LogText.Data);
-//		logger.writeWideLineToLog(wstring_format(L"AILog: [%hs] %s", rparms->LogCategory.GetName(), rparms->LogText.Data));
-//	}
-//	/*else if (!isPartOf(funcFullName, "Blaze") && isPartOf(funcFullName, "Log"))
-//	{
-//		writeln("%hs", funcFullName);
-//	}*/
 //	ProcessEvent_orig(Context, Function, Parms, Result);
 //}
 
-typedef UObject* (*tCreateImport)(ULinkerLoad* Context, int UIndex);
-tCreateImport CreateImport = nullptr;
-tCreateImport CreateImport_orig = nullptr;
 UObject* CreateImport_hook(ULinkerLoad* Context, int i)
 {
 	UObject* object = CreateImport_orig(Context, i);
@@ -78,10 +57,6 @@ void logMessage(const wchar_t* logSource, wchar_t* formatStr, void* param1, void
 }
 
 #pragma region LogInternal
-
-typedef void (*tLogInternalNative)(UObject* callingObject, LE3FFrameHACK* param2);
-tLogInternalNative LogInternal = nullptr;
-tLogInternalNative LogInternal_orig = nullptr;
 void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
 {
 	// 0x20 = Object?
@@ -103,9 +78,6 @@ void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
 #pragma endregion LogInternal
 
 #pragma region FOutputDevice::Logf
-typedef void (*tFOutputDeviceLogF)(void* outputDevice, int* code, wchar_t* formatStr, void* param1);
-tFOutputDeviceLogF FOutputDeviceLogf = nullptr;
-tFOutputDeviceLogF FOutputDeviceLogf_orig = nullptr;
 void FOutputDeviceLogf_hook(void* fOutputDevice, int* code, wchar_t* formatStr, void* param1)
 {
 	logMessage(L"appLogf", formatStr, param1, param1);
@@ -114,9 +86,6 @@ void FOutputDeviceLogf_hook(void* fOutputDevice, int* code, wchar_t* formatStr, 
 #pragma endregion FOutputDevice::Logf
 
 #pragma region FErrorOutputDevice::Logf
-typedef void (*tFOutputDeviceErrorLogF)(void* outputDevice, wchar_t* formatStr, void* param1, void* param2);
-tFOutputDeviceErrorLogF FErrorOutputDeviceLogf = nullptr;
-tFOutputDeviceErrorLogF FErrorOutputDeviceLogf_orig = nullptr;
 void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* param1, void* param2)
 {
 	logMessage(L"appErrorLogf", formatStr, param1, param2);
@@ -142,7 +111,6 @@ bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 
 	INIT_FIND_PATTERN_POSTHOOK(FErrorOutputDeviceLogf, /*48 89 54 24 10*/ "4c 89 44 24 18 4c 89 4c 24 20 57 48 83 ec 50 83 79 08 00 48 8b f9 0f 85 c1 00 00 00 83 79 0c 00 74 0d 83 3d 22 c5 6c 01 00 0f 85 ae 00 00 00");
 	INIT_HOOK_PATTERN(FErrorOutputDeviceLogf);
-
 }
 
 
@@ -154,10 +122,7 @@ bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 #pragma region PackageLoading
 
 
-// Returns a UPackage, but we don't have that defined
-typedef void* (*tLoadPackage)(void* param1, wchar_t* param2, uint32 param3);
-tLoadPackage LoadPackage = nullptr;
-tLoadPackage LoadPackage_orig = nullptr;
+
 void* LoadPackage_hook(void* param1, wchar_t* packageName, uint32 param3)
 {
 	// FindPackageFile doesn't seem to work. Might need to figure out what parameters it really needs.
@@ -180,9 +145,7 @@ void* LoadPackage_hook(void* param1, wchar_t* packageName, uint32 param3)
 	return LoadPackage_orig(param1, packageName, param3);
 }
 
-typedef uint32(*tAsyncLoadMethod)(UnLinker* linker, int a2, float a3);
-tAsyncLoadMethod LoadPackageAsyncTick = nullptr;
-tAsyncLoadMethod LoadPackageAsyncTick_orig = nullptr;
+
 uint32 LoadPackageAsyncTick_hook(UnLinker* linker, int a2, float a3)
 {
 	auto result = LoadPackageAsyncTick_orig(linker, a2, a3);
@@ -190,9 +153,7 @@ uint32 LoadPackageAsyncTick_hook(UnLinker* linker, int a2, float a3)
 	return result;
 }
 
-typedef void (*uLinkerPreload)(UnLinker* linker, UObject* objectToLoad);
-uLinkerPreload LinkerLoadPreload = nullptr;
-uLinkerPreload LinkerLoadPreload_orig = nullptr;
+
 void LinkerLoadPreload_hook(UnLinker* linker, UObject* objectToLoad)
 {
 
@@ -226,29 +187,24 @@ SPI_IMPLEMENT_ATTACH
 	writeln(L"Initializing DebugLogger...");
 
 	INIT_CHECK_SDK();
-
-	if (auto rc = InterfacePtr->InstallHook("OutputDebugStringW", (void*)OutputDebugStringW, (void*)OutputDebugStringW_Hook, (void**)&OutputDebugStringW_Orig);
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to hook OutputDebugStringW: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-
 	LoadCommonClassPointers(InterfacePtr);
+
+	// Log debug output messages
+	INIT_HOOK_PATTERN(OutputDebugStringW);
 
 	// CreateImport
 	INIT_FIND_PATTERN_POSTHOOK(CreateImport, /*"48 8b c4 55 41*/ "54 41 55 41 56 41 57 48 8b ec 48 83 ec 70 48 c7 45 d0 fe ff ff ff 48 89 58 10 48 89 70 18 48 89 78 20 4c 63 e2");
 	INIT_HOOK_PATTERN(CreateImport);
 
 	// OBJECT PRELOAD (called on every object in a package file, can be used for seekfree)
-	INIT_FIND_PATTERN_POSTHOOK(LinkerLoadPreload, /*"40 55 56 57 41*/ "54 41 55 41 56 41 57 48 8d 6c 24 d9 48 81 ec 90 00 00 00 48 c7 45 e7 fe ff ff ff");
-	INIT_HOOK_PATTERN(LinkerLoadPreload);
+	//INIT_FIND_PATTERN_POSTHOOK(LinkerLoadPreload, /*"40 55 56 57 41*/ "54 41 55 41 56 41 57 48 8d 6c 24 d9 48 81 ec 90 00 00 00 48 c7 45 e7 fe ff ff ff");
+	//INIT_HOOK_PATTERN(LinkerLoadPreload);
 
 	// SYNC LOAD PACKAGE
 	INIT_FIND_PATTERN_POSTHOOK(LoadPackage, /*"48 8b c4 44 89*/"40 18 48 89 48 08 53 56 57 41 56 41 57 48 83 ec 50 48 c7 40 b8 fe ff ff ff");
 	INIT_HOOK_PATTERN(LoadPackage);
 
-	// ASYNC LOAD PACKAGE
+	// ASYNC LOAD PACKAGE (CreateLinkerAsync)
 	INIT_FIND_PATTERN_POSTHOOK(LoadPackageAsyncTick, /*"48 8b c4 55 56*/ "57 41 54 41 55 41 56 41 57 48 81 ec 80 00 00 00 48 c7 40 90 fe ff ff ff");
 	INIT_HOOK_PATTERN(LoadPackageAsyncTick);
 

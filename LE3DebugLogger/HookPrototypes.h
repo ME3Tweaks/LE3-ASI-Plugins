@@ -5,9 +5,19 @@
 #include "../LE3-SDK/ME3TweaksHeader.h"
 #define MYHOOK "DebugLogger_"
 
-struct FPackageFileCache;
-bool hookLoggingFunctions(ISharedProxyInterface* interface_ptr);
+// STRUCTS ==========================================================
+struct LE3FFrameHACK
+{
+    void* vtable; // 0x0
+    int unknown[6]; // 0x08 0x0C 0x10 0x14 0x18 0x1C
+    UObject* Object; // 0x20
+    BYTE* Code; // 0x28
+    // No idea what this other stuff is
+};
 
+
+
+struct FPackageFileCache;
 
 typedef bool (*tFPackageFileCacheFindPackageFile) (wchar_t* packageName, FGuid* guid, FString& OutFileName, wchar_t* language, bool unknown);
 typedef wchar_t** (*tFPackageFileCacheGetPackageFileList) (FPackageFileCache* cache, wchar_t* FileName);
@@ -25,10 +35,9 @@ struct FPackageFileCache
     virtual TArray<FString> GetPackageNameList(TArray<FString> outData) = 0;
 };
 
-// Todo: This is only accurate in DRM free; there needs to be a way to find this address dynamically
+
 // The address at this location points to the static GPackageFileCache object pointer
-#define GPackageFileCacheOffset 0x7ff74c08dab0;
-FPackageFileCache* GPackageFileCache = nullptr; // Have to assign a bit after game startup
+FPackageFileCache* GPackageFileCache = nullptr;
 
 // Used to lookup packages. Fully native
 struct FFileManager
@@ -115,20 +124,11 @@ struct UnLinker
 
 };
 
-struct LE3FFrameHACK
-{
-    void* vtable; // 0x0
-    int unknown[6]; // 0x08 0x0C 0x10 0x14 0x18 0x1C
-    UObject* Object; // 0x20
-    BYTE* Code; // 0x28
-    // No idea what this other stuff is
-};
-
 typedef void (*tNativeFunction) (UObject* Context, LE3FFrameHACK* Stack, void* Result);
 tNativeFunction* GNatives = nullptr;
 
 
-// UTILITY METHODS
+// UTILITY METHODS ======================================================================
 
 // Searches for the specified byte pattern, which is a 7-byte mov or lea instruction, with the 'source' operand being the address being calculated
 void* findAddressLeaMov(ISharedProxyInterface* InterfacePtr, char* name, char* bytePattern)
@@ -174,3 +174,37 @@ void LoadCommonClassPointers(ISharedProxyInterface* InterfacePtr)
         writeln("Found GNatives at %p", GNatives);
     }
 }
+
+// HOOK SIGNATURES =======================================================================
+typedef void (*tFOutputDeviceLogF)(void* outputDevice, int* code, wchar_t* formatStr, void* param1);
+tFOutputDeviceLogF FOutputDeviceLogf = nullptr;
+tFOutputDeviceLogF FOutputDeviceLogf_orig = nullptr;
+
+typedef void (*tFOutputDeviceErrorLogF)(void* outputDevice, wchar_t* formatStr, void* param1, void* param2);
+tFOutputDeviceErrorLogF FErrorOutputDeviceLogf = nullptr;
+tFOutputDeviceErrorLogF FErrorOutputDeviceLogf_orig = nullptr;
+
+typedef void (*tLogInternalNative)(UObject* callingObject, LE3FFrameHACK* param2);
+tLogInternalNative LogInternal = nullptr;
+tLogInternalNative LogInternal_orig = nullptr;
+
+typedef void (*uLinkerPreload)(UnLinker* linker, UObject* objectToLoad);
+uLinkerPreload LinkerLoadPreload = nullptr;
+uLinkerPreload LinkerLoadPreload_orig = nullptr;
+
+typedef uint32(*tAsyncLoadMethod)(UnLinker* linker, int a2, float a3);
+tAsyncLoadMethod LoadPackageAsyncTick = nullptr;
+tAsyncLoadMethod LoadPackageAsyncTick_orig = nullptr;
+
+// Returns a UPackage, but we don't have that defined
+typedef void* (*tLoadPackage)(void* param1, wchar_t* param2, uint32 param3);
+tLoadPackage LoadPackage = nullptr;
+tLoadPackage LoadPackage_orig = nullptr;
+
+typedef UObject* (*tCreateImport)(ULinkerLoad* Context, int UIndex);
+tCreateImport CreateImport = nullptr;
+tCreateImport CreateImport_orig = nullptr;
+
+typedef void (*tProcessEvent)(UObject* Context, UFunction* Function, void* Parms, void* Result);
+tProcessEvent ProcessEvent = nullptr;
+tProcessEvent ProcessEvent_orig = nullptr;
