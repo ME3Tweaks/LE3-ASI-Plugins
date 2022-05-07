@@ -115,6 +115,19 @@ struct UnLinker
 
 };
 
+struct LE3FFrameHACK
+{
+    void* vtable; // 0x0
+    int unknown[6]; // 0x08 0x0C 0x10 0x14 0x18 0x1C
+    UObject* Object; // 0x20
+    BYTE* Code; // 0x28
+    // No idea what this other stuff is
+};
+
+typedef void (*tNativeFunction) (UObject* Context, LE3FFrameHACK* Stack, void* Result);
+tNativeFunction* GNatives = nullptr;
+
+
 // UTILITY METHODS
 
 // Searches for the specified byte pattern, which is a 7-byte mov or lea instruction, with the 'source' operand being the address being calculated
@@ -152,5 +165,12 @@ void LoadCommonClassPointers(ISharedProxyInterface* InterfacePtr)
     {
         GPackageFileCache = static_cast<FPackageFileCache*>(addr);
         writeln("Found GPackageFileCache at %p", GPackageFileCache);
+    }
+
+    addr = findAddressLeaMov(InterfacePtr, "GNatives", "48 8d 3d 01 be 37 01 48 8b e9 48 8b da 48 8b 4a 20");
+    if (addr != nullptr)
+    {
+        GNatives = static_cast<tNativeFunction*>(addr);
+        writeln("Found GNatives at %p", GNatives);
     }
 }

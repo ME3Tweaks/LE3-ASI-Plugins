@@ -104,17 +104,6 @@ void logMessage(const wchar_t* logSource, wchar_t* formatStr, void* param1, void
 }
 
 #pragma region LogInternal
-struct LE3FFrameHACK
-{
-	void* vtable; // 0x0
-	int unknown[6]; // 0x08 0x0C 0x10 0x14 0x18 0x1C
-	UObject* Object; // 0x20
-	BYTE* Code; // 0x28
-	// No idea what this other stuff is
-};
-
-typedef void (*tNativeFunction) (UObject* Context, LE3FFrameHACK* Stack, void* Result);
-tNativeFunction* GNatives = (tNativeFunction*)0x7ff74c084bb0; // Probably shouldn't hardcode this...
 
 typedef void (*tLogInternalNative)(UObject* callingObject, LE3FFrameHACK* param2);
 tLogInternalNative LogInternal = nullptr;
