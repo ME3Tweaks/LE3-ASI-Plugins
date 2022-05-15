@@ -154,6 +154,20 @@ struct FName
 		return false;
 	}
 
+	char* Instanced()
+	{
+		if (Number > 0)
+		{
+			static char cOutBuffer[256];
+			sprintf_s(cOutBuffer, "%s_%d", GetName(), Number - 1);
+			return cOutBuffer;
+		}
+		else
+		{
+			return GetName();
+		}
+	}
+
 	FName() : Offset{ 0 }, Chunk{ 0 }, Number{ 0 } { }
 
 	FName(char* lookup, signed long instance = 0)
