@@ -191,15 +191,19 @@ public:
 		if (bTimeStamp) {
 			string timeStamp = getTimestampStr();
 			fprintf(log, timeStamp.c_str());
+			writeMsg(L"%hs", timeStamp.c_str());
 			//free((char*)timeStamp);
 		}
 		/*if (!log) {
 			std::cout << "LOG ISNT INITALIZED";
 		}*/
-		fprintf(log, "%s", str.c_str());
+		fprintf(log, "%s", str.data());
+		writeMsg(L"%hs", str.data());
+
 		if (newLine)
 		{
 			fprintf(log, "\n");
+			writeMsg(L"\n");
 		}
 
 		numLinesWritten++;
@@ -211,11 +215,13 @@ public:
 
 	void writeWideToLog(std::wstring_view wstr) {
 		fwprintf(log, L"%s", wstr.data());
+		writeln(L"%s", wstr.data());
 		fflush(log);
 	}
 
 	void writeWideLineToLog(std::wstring_view wstr) {
 		fwprintf(log, L"%s\n", wstr.data());
+		writeln(L"%s", wstr.data());
 		fflush(log);
 	}
 
