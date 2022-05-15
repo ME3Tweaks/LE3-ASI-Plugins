@@ -9,11 +9,11 @@
 
 #include "HookPrototypes.h"
 
-SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"2.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
+SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"2.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_PRELOAD;
 SPI_PLUGINSIDE_SEQATTACH;
 
-ME3TweaksASILogger logger("DebugLogger v2", "DebugLogger.txt");
+ME3TweaksASILogger logger("DebugLogger v2", "LE3DebugLogger.log");
 
 // Prototype for WinAPI DebugOutput string. We don't put this
 // in prototypes cause this is not part of the game
