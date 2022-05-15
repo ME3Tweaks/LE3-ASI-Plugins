@@ -182,6 +182,7 @@ void logAllocationFailure(UClass* instancingClass, UObject* outer, FName objClas
 	logger.writeToLog(wstring_format(L"\tArchetype: %hs\n", archetypeName), true);
 
 	logger.writeToLog(L"DebugLogger: Terminating application due to crash in StaticAllocateObject(). See the DebugLogger log file.\n", true);
+	logger.flush();
 }
 
 UObject* StaticAllocateObject_hook(
