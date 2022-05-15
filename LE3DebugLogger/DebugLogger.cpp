@@ -248,10 +248,6 @@ SPI_IMPLEMENT_ATTACH
 
 	// Logging functions to hook up for writing to disk
 	hookLoggingFunctions(InterfacePtr);
-	
-	//INIT_FIND_PATTERN_POSTHOOK(ProcessEvent, LE_PATTERN_POSTHOOK_PROCESSEVENT);
-	//INIT_HOOK_PATTERN(ProcessEvent);
-
 	writeln(L"Initialized DebugLogger");
 
 	return true;
