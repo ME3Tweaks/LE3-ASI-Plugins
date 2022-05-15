@@ -208,3 +208,18 @@ tCreateImport CreateImport_orig = nullptr;
 typedef void (*tProcessEvent)(UObject* Context, UFunction* Function, void* Parms, void* Result);
 tProcessEvent ProcessEvent = nullptr;
 tProcessEvent ProcessEvent_orig = nullptr;
+
+// DebugLogger stuff for devs
+// ==========================================
+typedef UObject* (*tStaticAllocateObject)(
+    UClass* objectClass, // What class of object is being instantiated?
+    UObject* inObject, // The 'Outer' of the object will be set to this 
+    FName a3, // Name of object?
+    long long loadFlags,
+    void* a5, // often 0
+    void* errorDevice, //Often GError
+    const wchar_t* a7, // Often 0
+    void* a8, // Often 0
+    void* a9); // Often 0
+tStaticAllocateObject StaticAllocateObject = nullptr;
+tStaticAllocateObject StaticAllocateObject_orig = nullptr;
