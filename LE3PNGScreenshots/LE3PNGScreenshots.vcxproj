@@ -89,17 +89,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="fpng\fpng.cpp" />
     <ClCompile Include="LE3PNGScreenShots.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Common.h" />
-    <ClInclude Include="..\Interface.h" />
-    <ClInclude Include="fpng\fpng.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\LE1-SDK\LE1-SDK.vcxproj">
-      <Project>{e8071203-085e-4b90-9c5c-39d546ed6fe2}</Project>
+    <ProjectReference Include="..\LE3-SDK\LE3-SDK.vcxproj">
+      <Project>{8da34ede-7d5c-4da3-8841-78ab05e8c6d2}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
