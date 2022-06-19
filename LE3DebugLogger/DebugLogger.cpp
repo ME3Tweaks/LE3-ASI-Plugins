@@ -47,11 +47,11 @@ UObject* CreateImport_hook(ULinkerLoad* Context, int i)
 
 
 // Logs a message from a source
-void logMessage(const wchar_t* logSource, wchar_t* formatStr, void* param1, void* param2)
+void logMessage(const wchar_t* logSource, wchar_t* formatStr, void* param1, void* param2, void* param3, void* param4)
 {
 	// We have to prepare the formatting string since it's an inbound parameter
 	auto preString = wstring_format(L"%s: %s", logSource, formatStr);
-	logger.writeToLog(wstring_format(preString.data(), param1, param2), true, true);
+	logger.writeToLog(wstring_format(preString.data(), param1, param2, param3, param4), true, true);
 }
 
 #pragma region LogInternal
@@ -68,7 +68,7 @@ void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
 	GNatives[nativeIndex](sfObject, (LE3FFrameHACK*)stackFrame, &stringArg);
 
 	// Kinda jank way to re-use this code by making it create a string a certain way
-	logMessage(L"LogInternal() from %hs", L"%s", callingObject->GetFullName(), stringArg.Data);
+	logMessage(L"LogInternal() from %hs", L"%s", callingObject->GetFullName(), stringArg.Data, NULL, NULL);
 
 	//restore the code pointer so LogInternal executes normally.
 	stackFrame->Code = originalCodePointer;
@@ -80,15 +80,15 @@ void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
 #pragma region FOutputDevice::Logf
 void FOutputDeviceLogf_hook(void* fOutputDevice, int* code, wchar_t* formatStr, void* param1)
 {
-	logMessage(L"appLogf", formatStr, param1, param1);
+	logMessage(L"appLogf", formatStr, param1, param1, NULL, NULL);
 }
 
 #pragma endregion FOutputDevice::Logf
 
 #pragma region FErrorOutputDevice::Logf
-void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* param1, void* param2)
+void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* param1, void* param2, void* param3, void* param4)
 {
-	logMessage(L"appErrorLogf", formatStr, param1, param2);
+	logMessage(L"appErrorLogf", formatStr, param1, param2, param3, param4);
 }
 #pragma endrgion FErrorOutputDevice::Logf
 
