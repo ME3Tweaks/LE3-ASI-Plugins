@@ -78,9 +78,9 @@ void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
 #pragma endregion LogInternal
 
 #pragma region FOutputDevice::Logf
-void FOutputDeviceLogf_hook(void* fOutputDevice, int* code, wchar_t* formatStr, void* param1)
+void FOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* param1, void* param2, void* param3, void* param4)
 {
-	logMessage(L"appLogf", formatStr, param1, param1, NULL, NULL);
+	logMessage(L"appLogf", formatStr, param1, param1, param3, param4);
 }
 
 #pragma endregion FOutputDevice::Logf
