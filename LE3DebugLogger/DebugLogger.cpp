@@ -9,11 +9,11 @@
 
 #include "HookPrototypes.h"
 
-SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"3.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
+SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"4.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_PRELOAD;
-SPI_PLUGINSIDE_SEQATTACH;
+SPI_PLUGINSIDE_ASYNCATTACH;
 
-ME3TweaksASILogger logger("DebugLogger v3", "LE3DebugLogger.log");
+ME3TweaksASILogger logger("DebugLogger v4", "LE3DebugLogger.log");
 
 // Prototype for WinAPI DebugOutput string. We don't put this
 // in prototypes cause this is not part of the game
@@ -111,6 +111,8 @@ bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 
 	INIT_FIND_PATTERN_POSTHOOK(FErrorOutputDeviceLogf, /*48 89 54 24 10*/ "4c 89 44 24 18 4c 89 4c 24 20 57 48 83 ec 50 83 79 08 00 48 8b f9 0f 85 c1 00 00 00 83 79 0c 00 74 0d 83 3d 22 c5 6c 01 00 0f 85 ae 00 00 00");
 	INIT_HOOK_PATTERN(FErrorOutputDeviceLogf);
+
+	return true;
 }
 
 #pragma region PackageLoading
