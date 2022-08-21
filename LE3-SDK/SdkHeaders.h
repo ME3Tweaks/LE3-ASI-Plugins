@@ -101,7 +101,7 @@ DWORD Length : 9;
 DWORD Bits : 3; 
 }; 
 
-#pragma pack(1)
+#pragma pack(push, 1)
 struct FNameEntry
 {
 	PackedIndex Index;
@@ -109,7 +109,6 @@ struct FNameEntry
 	char AnsiName[1];
 };
 
-#pragma pack(1)
 struct FName
 {
 	DWORD Offset : 29;
@@ -298,3 +297,5 @@ template<typename T> bool IsA(UObject* object) {
 #include "SDK_HEADERS\SFXQA_classes.h"
 #include "SDK_HEADERS\SFXQA_f_structs.h"
 // #include "SDK_HEADERS\SFXQA_functions.cpp"
+
+#pragma pack(pop)

@@ -24,6 +24,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3LinkerPrinter", "LE3Link
 		{8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2} = {8DA34EDE-7D5C-4DA3-8841-78AB05E8C6D2}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3ConsoleExtension", "LE3ConsoleExtension\LE3ConsoleExtension.vcxproj", "{FD19784F-65ED-4C58-8922-CADF252A19FC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -96,6 +98,14 @@ Global
 		{8298E95F-DEAD-440D-B9E6-7B7BC0DF2FE4}.Release|x64.Build.0 = Release|x64
 		{8298E95F-DEAD-440D-B9E6-7B7BC0DF2FE4}.Release|x86.ActiveCfg = Release|x64
 		{8298E95F-DEAD-440D-B9E6-7B7BC0DF2FE4}.Release|x86.Build.0 = Release|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Debug|x64.ActiveCfg = Debug|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Debug|x64.Build.0 = Debug|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Debug|x86.ActiveCfg = Debug|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Debug|x86.Build.0 = Debug|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Release|x64.ActiveCfg = Release|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Release|x64.Build.0 = Release|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Release|x86.ActiveCfg = Release|x64
+		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
