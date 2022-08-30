@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3SeqAct_LogEnabler", "LE3
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3DebugLogger", "LE3DebugLogger\LE3DebugLogger.vcxproj", "{7172D8EC-2994-4D0D-92A0-7AA3F9FAB08E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3LEXInterop", "Dll1\Dll1.vcxproj", "{17A89D60-0608-4CC7-92F2-B98082769E92}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3PNGScreenShots", "LE3PNGScreenshots\LE3PNGScreenshots.vcxproj", "{8298E95F-CC4D-440D-B9E6-7B7BC0DF2FE5}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnrealScriptDebugger", "UnrealScriptDebugger\UnrealScriptDebugger.vcxproj", "{028448EA-01A4-4B5E-98B5-B28CA3A0839F}"
@@ -25,6 +23,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3LinkerPrinter", "LE3Link
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3ConsoleExtension", "LE3ConsoleExtension\LE3ConsoleExtension.vcxproj", "{FD19784F-65ED-4C58-8922-CADF252A19FC}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3LEXInterop", "LE3LEXInterop\LE3LEXInterop.vcxproj", "{3E825F49-5D7E-4064-B5B2-03011B408B6F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -68,14 +68,6 @@ Global
 		{7172D8EC-2994-4D0D-92A0-7AA3F9FAB08E}.Release|x64.Build.0 = Release|x64
 		{7172D8EC-2994-4D0D-92A0-7AA3F9FAB08E}.Release|x86.ActiveCfg = Release|Win32
 		{7172D8EC-2994-4D0D-92A0-7AA3F9FAB08E}.Release|x86.Build.0 = Release|Win32
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Debug|x64.ActiveCfg = Debug|x64
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Debug|x64.Build.0 = Debug|x64
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Debug|x86.ActiveCfg = Debug|Win32
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Debug|x86.Build.0 = Debug|Win32
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Release|x64.ActiveCfg = Release|x64
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Release|x64.Build.0 = Release|x64
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Release|x86.ActiveCfg = Release|Win32
-		{17A89D60-0608-4CC7-92F2-B98082769E92}.Release|x86.Build.0 = Release|Win32
 		{8298E95F-CC4D-440D-B9E6-7B7BC0DF2FE5}.Debug|x64.ActiveCfg = Debug|x64
 		{8298E95F-CC4D-440D-B9E6-7B7BC0DF2FE5}.Debug|x64.Build.0 = Debug|x64
 		{8298E95F-CC4D-440D-B9E6-7B7BC0DF2FE5}.Debug|x86.ActiveCfg = Debug|x64
@@ -106,6 +98,14 @@ Global
 		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Release|x64.Build.0 = Release|x64
 		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Release|x86.ActiveCfg = Release|x64
 		{FD19784F-65ED-4C58-8922-CADF252A19FC}.Release|x86.Build.0 = Release|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Debug|x64.ActiveCfg = Debug|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Debug|x64.Build.0 = Debug|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Debug|x86.ActiveCfg = Debug|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Debug|x86.Build.0 = Debug|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Release|x64.ActiveCfg = Release|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Release|x64.Build.0 = Release|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Release|x86.ActiveCfg = Release|x64
+		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

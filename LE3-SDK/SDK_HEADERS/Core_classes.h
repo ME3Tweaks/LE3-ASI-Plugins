@@ -222,7 +222,7 @@ public:
 	char* GetName();
 	char* GetInstancedName();
 	char* GetNameCPP(); 
-	char* GetFullName();
+	char* GetFullName(bool includeClass = true);
 	char* GetFullPath();
 
 	template<class T> static T* FindObject (char* ObjectFullName); 
