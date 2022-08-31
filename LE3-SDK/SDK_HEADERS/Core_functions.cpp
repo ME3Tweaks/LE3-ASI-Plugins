@@ -14,6 +14,7 @@
 
 #pragma once
 #include <Windows.h>
+#include <string.h>
 #include <cstdio>
 #include "../SdkHeaders.h"
 
