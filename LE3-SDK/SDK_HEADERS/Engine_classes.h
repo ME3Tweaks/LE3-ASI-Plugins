@@ -8768,6 +8768,7 @@ public:
 	void SetLevelStreamingStatus(struct FName PackageName, unsigned long bShouldBeLoaded, unsigned long bShouldBeVisible);
 	void StreamLevelOut(struct FName PackageName);
 	void StreamLevelIn(struct FName PackageName);
+	void OnlyLoadLevel(struct FName PackageName);
 };
 
 // Class Engine.Client
