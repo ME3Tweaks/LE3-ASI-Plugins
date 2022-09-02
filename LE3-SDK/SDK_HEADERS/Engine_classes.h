@@ -8765,6 +8765,9 @@ public:
 	void ListDynamicActors ( );
 	void DebugPause ( );
 	void DebugAI ( struct FName Category );
+	void SetLevelStreamingStatus(struct FName PackageName, unsigned long bShouldBeLoaded, unsigned long bShouldBeVisible);
+	void StreamLevelOut(struct FName PackageName);
+	void StreamLevelIn(struct FName PackageName);
 };
 
 // Class Engine.Client

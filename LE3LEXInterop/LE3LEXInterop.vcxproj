@@ -98,10 +98,10 @@
     <ClInclude Include="..\..\Shared-ASI\LEXInterop\LELiveLevelEditor.h" />
     <ClInclude Include="..\..\Shared-ASI\LEXInterop\LEPathfindingGPS.h" />
     <ClInclude Include="..\..\Shared-ASI\LEXInterop\LEXCommunications.h" />
+    <ClInclude Include="..\..\Shared-ASI\LEXInterop\LEXInterop.h" />
     <ClInclude Include="..\..\Shared-ASI\LEXInterop\LEXPipe.h" />
     <ClInclude Include="..\..\Shared-ASI\LEXInterop\LLEActions.h" />
     <ClInclude Include="..\..\Shared-ASI\LEXInterop\SharedData.h" />
-    <ClInclude Include="..\..\Shared-ASI\LEXInterop\StaticVariablePointers.h" />
     <ClInclude Include="..\..\Shared-ASI\LEXInterop\UtilityMethods.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

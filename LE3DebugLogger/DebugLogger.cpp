@@ -1,11 +1,7 @@
-#include <stdio.h>
-#include <io.h>
+#include <cstdio>
 #include <string>
-#include <fstream>
-#include <iostream>       // std::cout, std::endl
 #include <thread>         // std::this_thread::sleep_for
 #include <chrono>         // std::chrono::seconds
-#include <set>
 
 #include "HookPrototypes.h"
 
