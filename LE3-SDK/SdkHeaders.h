@@ -130,7 +130,7 @@ struct FName
 	static bool TryFind(char* lookup, signed long instance, FName* outName)
 	{
 		auto gBioNamePools = SDKInitializer::Instance()->GetBioNamePools();
-		for (FNameEntry** namePool = reinterpret_cast<FNameEntry**>(gBioNamePools);
+		for (FNameEntry** namePool = gBioNamePools;
 				*namePool != nullptr;
 				namePool++)
 		{
@@ -140,7 +140,7 @@ struct FName
 			{
 				if (!strcmp(lookup, nameEntry->AnsiName))
 				{
-					FName name{};
+					FName name;
 					name.Offset = (DWORD)((unsigned long long)nameEntry - (unsigned long long)*namePool);
 					name.Chunk = (DWORD)((unsigned long long)namePool - (unsigned long long)gBioNamePools);
 					name.Number = instance;
@@ -153,7 +153,7 @@ struct FName
 		return false;
 	}
 
-	char* Instanced()
+	char* Instanced() const
 	{
 		if (Number > 0)
 		{

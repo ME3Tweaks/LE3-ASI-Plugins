@@ -9636,7 +9636,8 @@ public:
 class ULevelBase : public UObject
 {
 public:
-	unsigned char                                      UnknownData00[ 0x70 ];                            		// 0x0060 (0x0070) MISSED OFFSET
+	struct TArray<AActor*>							   Actors;                                             		// 0x0060 (0x0010) [0x0000000000400000]              ( CPF_NeedCtorLink )
+	unsigned char                                      UnknownData00[ 0x60 ];                            		// 0x0070 (0x0060) MISSED OFFSET
 
 private:
 	static UClass* pClassPointer;
