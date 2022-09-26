@@ -176,7 +176,7 @@ void LoadCommonClassPointers(ISharedProxyInterface* InterfacePtr)
 }
 
 // HOOK SIGNATURES =======================================================================
-typedef void (*tFOutputDeviceLogF)(void* outputDevice, int* code, wchar_t* formatStr, void* param1);
+typedef void (*tFOutputDeviceLogF)(void* unknown, void* serializationFunc, wchar_t* formatStr, void* param1, void* param2, void* param3, void* param4);
 tFOutputDeviceLogF FOutputDeviceLogf = nullptr;
 tFOutputDeviceLogF FOutputDeviceLogf_orig = nullptr;
 
