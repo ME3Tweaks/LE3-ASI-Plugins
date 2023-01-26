@@ -1,19 +1,15 @@
-#include <stdio.h>
-#include <io.h>
+#include <cstdio>
 #include <string>
-#include <fstream>
-#include <iostream>       // std::cout, std::endl
 #include <thread>         // std::this_thread::sleep_for
 #include <chrono>         // std::chrono::seconds
-#include <set>
 
 #include "HookPrototypes.h"
 
-SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"3.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
+SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"4.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_PRELOAD;
-SPI_PLUGINSIDE_SEQATTACH;
+SPI_PLUGINSIDE_ASYNCATTACH;
 
-ME3TweaksASILogger logger("DebugLogger v3", "LE3DebugLogger.log");
+ME3TweaksASILogger logger("DebugLogger v4", "LE3DebugLogger.log");
 
 // Prototype for WinAPI DebugOutput string. We don't put this
 // in prototypes cause this is not part of the game
@@ -68,11 +64,11 @@ UObject* CreateExport_hook(ULinkerLoad* Context, int i)
 
 
 // Logs a message from a source
-void logMessage(const wchar_t* logSource, wchar_t* formatStr, void* param1, void* param2)
+void logMessage(const wchar_t* logSource, wchar_t* formatStr, void* param1, void* param2, void* param3, void* param4)
 {
 	// We have to prepare the formatting string since it's an inbound parameter
 	auto preString = wstring_format(L"%s: %s", logSource, formatStr);
-	logger.writeToLog(wstring_format(preString.data(), param1, param2), true, true);
+	logger.writeToLog(wstring_format(preString.data(), param1, param2, param3, param4), true, true);
 }
 
 #pragma region LogInternal
@@ -89,7 +85,7 @@ void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
 	GNatives[nativeIndex](sfObject, (LE3FFrameHACK*)stackFrame, &stringArg);
 
 	// Kinda jank way to re-use this code by making it create a string a certain way
-	logMessage(L"LogInternal() from %hs", L"%s", callingObject->GetFullName(), stringArg.Data);
+	logMessage(L"LogInternal() from %hs", L"%s", callingObject->GetFullName(), stringArg.Data, NULL, NULL);
 
 	//restore the code pointer so LogInternal executes normally.
 	stackFrame->Code = originalCodePointer;
@@ -99,17 +95,17 @@ void LogInternal_hook(UObject* callingObject, LE3FFrameHACK* stackFrame)
 #pragma endregion LogInternal
 
 #pragma region FOutputDevice::Logf
-void FOutputDeviceLogf_hook(void* fOutputDevice, int* code, wchar_t* formatStr, void* param1)
+void FOutputDeviceLogf_hook(void* unknown, void* serializationFuncPtr, wchar_t* format_str, void* arg1, void* arg2, void* arg3, void* arg4)
 {
-	logMessage(L"appLogf", formatStr, param1, param1);
+	logMessage(L"appLogf", format_str, arg1, arg2, arg3, arg4);
 }
 
 #pragma endregion FOutputDevice::Logf
 
 #pragma region FErrorOutputDevice::Logf
-void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* param1, void* param2)
+void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* param1, void* param2, void* param3, void* param4)
 {
-	logMessage(L"appErrorLogf", formatStr, param1, param2);
+	logMessage(L"appErrorLogf", formatStr, param1, param2, param3, param4);
 }
 #pragma endrgion FErrorOutputDevice::Logf
 
@@ -132,6 +128,8 @@ bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 
 	INIT_FIND_PATTERN_POSTHOOK(FErrorOutputDeviceLogf, /*48 89 54 24 10*/ "4c 89 44 24 18 4c 89 4c 24 20 57 48 83 ec 50 83 79 08 00 48 8b f9 0f 85 c1 00 00 00 83 79 0c 00 74 0d 83 3d 22 c5 6c 01 00 0f 85 ae 00 00 00");
 	INIT_HOOK_PATTERN(FErrorOutputDeviceLogf);
+
+	return true;
 }
 
 #pragma region PackageLoading

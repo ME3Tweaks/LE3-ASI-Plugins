@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../LE3-SDK/Interface.h"
-#include "../LE3-SDK/Common.h"
-#include "../LE3-SDK/ME3TweaksHeader.h"
+#include "../../Shared-ASI/Interface.h"
+#include "../../Shared-ASI/Common.h"
+#include "../../Shared-ASI/ME3Tweaks/ME3TweaksHeader.h"
 #define MYHOOK "DebugLogger_"
 
 // STRUCTS ==========================================================
@@ -176,7 +176,7 @@ void LoadCommonClassPointers(ISharedProxyInterface* InterfacePtr)
 }
 
 // HOOK SIGNATURES =======================================================================
-typedef void (*tFOutputDeviceLogF)(void* outputDevice, int* code, wchar_t* formatStr, void* param1);
+typedef void (*tFOutputDeviceLogF)(void* unknown, void* serializationFunc, wchar_t* formatStr, void* param1, void* param2, void* param3, void* param4);
 tFOutputDeviceLogF FOutputDeviceLogf = nullptr;
 tFOutputDeviceLogF FOutputDeviceLogf_orig = nullptr;
 

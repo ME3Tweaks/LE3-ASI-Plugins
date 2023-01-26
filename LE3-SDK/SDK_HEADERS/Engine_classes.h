@@ -7012,8 +7012,16 @@ public:
 // 0x0034 (0x0258 - 0x0224)
 class ULineBatchComponent : public UPrimitiveComponent
 {
+	struct FPrimitiveDrawInterfaceVTable
+	{
+		void* VirtualFunction_0x00;
+		void* VirtualFunction_0x08;
+		void* VirtualFunction_0x10;
+		void* VirtualFunction_0x18;
+		void (*DrawLine)(void* self, const FVector& start, const FVector& end, const FLinearColor& color, BYTE depth, const float thickness);
+	};
 public:
-	struct FPointer                                    FPrimitiveDrawInterfaceVfTable;                   		// 0x0224 (0x0008) [0x0000000000801002]              ( CPF_Const | CPF_Native | CPF_NoExport )
+	struct FPrimitiveDrawInterfaceVTable*              FPrimitiveDrawInterfaceVfTable;                   		// 0x0224 (0x0008) [0x0000000000801002]              ( CPF_Const | CPF_Native | CPF_NoExport )
 	struct FPointer                                    FPrimitiveDrawInterfaceView;                      		// 0x022C (0x0008) [0x0000000000801002]              ( CPF_Const | CPF_Native | CPF_NoExport )
 	struct TArray<struct FPointer>                     BatchedLines;                                     		// 0x0234 (0x0010) [0x0000000000003002]              ( CPF_Const | CPF_Native | CPF_Transient )
 	struct TArray<struct FPointer>                     BatchedPoints;                                    		// 0x0244 (0x0010) [0x0000000000003002]              ( CPF_Const | CPF_Native | CPF_Transient )
@@ -8765,6 +8773,10 @@ public:
 	void ListDynamicActors ( );
 	void DebugPause ( );
 	void DebugAI ( struct FName Category );
+	void SetLevelStreamingStatus(struct FName PackageName, unsigned long bShouldBeLoaded, unsigned long bShouldBeVisible);
+	void StreamLevelOut(struct FName PackageName);
+	void StreamLevelIn(struct FName PackageName);
+	void OnlyLoadLevel(struct FName PackageName);
 };
 
 // Class Engine.Client
@@ -9632,7 +9644,8 @@ public:
 class ULevelBase : public UObject
 {
 public:
-	unsigned char                                      UnknownData00[ 0x70 ];                            		// 0x0060 (0x0070) MISSED OFFSET
+	struct TArray<AActor*>							   Actors;                                             		// 0x0060 (0x0010) [0x0000000000400000]              ( CPF_NeedCtorLink )
+	unsigned char                                      UnknownData00[ 0x60 ];                            		// 0x0070 (0x0060) MISSED OFFSET
 
 private:
 	static UClass* pClassPointer;
@@ -11887,7 +11900,10 @@ public:
 class UWorld : public UObject
 {
 public:
-	unsigned char                                      UnknownData00[ 0x338 ];                           		// 0x0060 (0x0338) MISSED OFFSET
+	unsigned char                                      UnknownData00[ 0x178 ];                           		// 0x0060 (0x0178) MISSED OFFSET
+	ULineBatchComponent*                               LineBatcher;                                             // 0x01D8 (0x0008) MISSED OFFSET
+	ULineBatchComponent*                               PersistentLineBatcher;                                   // 0x01E0 (0x0008) MISSED OFFSET
+	unsigned char                                      UnknownData01[ 0x1B0 ];                           		// 0x01E8 (0x01B0) MISSED OFFSET
 
 	// Document offsets noted in Ghidra here
 

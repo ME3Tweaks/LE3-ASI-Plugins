@@ -101,7 +101,7 @@ DWORD Length : 9;
 DWORD Bits : 3; 
 }; 
 
-#pragma pack(1)
+#pragma pack(push, 1)
 struct FNameEntry
 {
 	PackedIndex Index;
@@ -109,7 +109,6 @@ struct FNameEntry
 	char AnsiName[1];
 };
 
-#pragma pack(1)
 struct FName
 {
 	DWORD Offset : 29;
@@ -131,7 +130,7 @@ struct FName
 	static bool TryFind(char* lookup, signed long instance, FName* outName)
 	{
 		auto gBioNamePools = SDKInitializer::Instance()->GetBioNamePools();
-		for (FNameEntry** namePool = reinterpret_cast<FNameEntry**>(gBioNamePools);
+		for (FNameEntry** namePool = gBioNamePools;
 				*namePool != nullptr;
 				namePool++)
 		{
@@ -141,7 +140,7 @@ struct FName
 			{
 				if (!strcmp(lookup, nameEntry->AnsiName))
 				{
-					FName name{};
+					FName name;
 					name.Offset = (DWORD)((unsigned long long)nameEntry - (unsigned long long)*namePool);
 					name.Chunk = (DWORD)((unsigned long long)namePool - (unsigned long long)gBioNamePools);
 					name.Number = instance;
@@ -154,7 +153,7 @@ struct FName
 		return false;
 	}
 
-	char* Instanced()
+	char* Instanced() const
 	{
 		if (Number > 0)
 		{
@@ -264,48 +263,50 @@ template<typename T> bool IsA(UObject* object) {
 #include "SDK_HEADERS\Core_structs.h"
 #include "SDK_HEADERS\Core_classes.h"
 #include "SDK_HEADERS\Core_f_structs.h"
-// #include "SDK_HEADERS\Core_functions.cpp"
+//#include "SDK_HEADERS\Core_functions.cpp"
 #include "SDK_HEADERS\Engine_structs.h"
 #include "SDK_HEADERS\Engine_classes.h"
 #include "SDK_HEADERS\Engine_f_structs.h"
-// #include "SDK_HEADERS\Engine_functions.cpp"
+//#include "SDK_HEADERS\Engine_functions.cpp"
 #include "SDK_HEADERS\GameFramework_structs.h"
 #include "SDK_HEADERS\GameFramework_classes.h"
 #include "SDK_HEADERS\GameFramework_f_structs.h"
-// #include "SDK_HEADERS\GameFramework_functions.cpp"
+//#include "SDK_HEADERS\GameFramework_functions.cpp"
 #include "SDK_HEADERS\IpDrv_structs.h"
 #include "SDK_HEADERS\IpDrv_classes.h"
 #include "SDK_HEADERS\IpDrv_f_structs.h"
-// #include "SDK_HEADERS\IpDrv_functions.cpp"
+//#include "SDK_HEADERS\IpDrv_functions.cpp"
 #include "SDK_HEADERS\GFxUI_structs.h"
 #include "SDK_HEADERS\GFxUI_classes.h"
 #include "SDK_HEADERS\GFxUI_f_structs.h"
-// #include "SDK_HEADERS\GFxUI_functions.cpp"
+//#include "SDK_HEADERS\GFxUI_functions.cpp"
 #include "SDK_HEADERS\WwiseAudio_structs.h"
 #include "SDK_HEADERS\WwiseAudio_classes.h"
 #include "SDK_HEADERS\WwiseAudio_f_structs.h"
-// #include "SDK_HEADERS\WwiseAudio_functions.cpp"
+//#include "SDK_HEADERS\WwiseAudio_functions.cpp"
 #include "SDK_HEADERS\WinDrv_structs.h"
 #include "SDK_HEADERS\WinDrv_classes.h"
 #include "SDK_HEADERS\WinDrv_f_structs.h"
-// #include "SDK_HEADERS\WinDrv_functions.cpp"
+//#include "SDK_HEADERS\WinDrv_functions.cpp"
 #include "SDK_HEADERS\SFXOnlineFoundation_structs.h"
 #include "SDK_HEADERS\SFXOnlineFoundation_classes.h"
 #include "SDK_HEADERS\SFXOnlineFoundation_f_structs.h"
-// #include "SDK_HEADERS\SFXOnlineFoundation_functions.cpp"
+//#include "SDK_HEADERS\SFXOnlineFoundation_functions.cpp"
 #include "SDK_HEADERS\SFXGame_structs.h"
 #include "SDK_HEADERS\SFXGame_classes.h"
 #include "SDK_HEADERS\SFXGame_f_structs.h"
-// #include "SDK_HEADERS\SFXGame_functions.cpp"
+//#include "SDK_HEADERS\SFXGame_functions.cpp"
 #include "SDK_HEADERS\SFXGameContent_structs.h"
 #include "SDK_HEADERS\SFXGameContent_classes.h"
 #include "SDK_HEADERS\SFXGameContent_f_structs.h"
-// #include "SDK_HEADERS\SFXGameContent_functions.cpp"
+//#include "SDK_HEADERS\SFXGameContent_functions.cpp"
 #include "SDK_HEADERS\SFXGameContentLiveKismet_structs.h"
 #include "SDK_HEADERS\SFXGameContentLiveKismet_classes.h"
 #include "SDK_HEADERS\SFXGameContentLiveKismet_f_structs.h"
-// #include "SDK_HEADERS\SFXGameContentLiveKismet_functions.cpp"
+//#include "SDK_HEADERS\SFXGameContentLiveKismet_functions.cpp"
 #include "SDK_HEADERS\SFXQA_structs.h"
 #include "SDK_HEADERS\SFXQA_classes.h"
 #include "SDK_HEADERS\SFXQA_f_structs.h"
-// #include "SDK_HEADERS\SFXQA_functions.cpp"
+//#include "SDK_HEADERS\SFXQA_functions.cpp"
+
+#pragma pack(pop)
