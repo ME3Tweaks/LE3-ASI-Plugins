@@ -43,13 +43,13 @@ UObject* CreateImport_hook(ULinkerLoad* Context, int i)
 
 UObject* CreateExport_hook(ULinkerLoad* Context, int i)
 {
-	logger.writeToLog(wstring_format(L"Creating export %i in %s\n", i, Context->Filename.Data), true);
+	logger.writeToLog(wstring_format(L"Creating UExport %i in %s\n", i + 1, Context->Filename.Data), true);
 	UObject* object = CreateExport_orig(Context, i);
 	if (object != nullptr) {
-		logger.writeToLog(wstring_format(L"Loaded export %i (%hs)\n", i, object->GetName()), true);
+		logger.writeToLog(wstring_format(L"Loaded UExport %i (%hs)\n", i + 1, object->GetName()), true);
 	}
 	else {
-		logger.writeToLog(wstring_format(L"FAILED TO LOAD EXPORT %i!\n", i), true);
+		logger.writeToLog(wstring_format(L"FAILED TO LOAD UEXPORT %i!\n", i + 1), true);
 	}
 	logger.flush();
 
@@ -240,25 +240,25 @@ typedef void(__thiscall* tUFunctionBind)(void* pFunction);
 tUFunctionBind UFunctionBind = nullptr;
 tUFunctionBind UFunctionBind_orig = nullptr;
 
-set<void*> nativeSet;
-void HookedUFunctionBind(UFunction* functionObj)
-{
-	UFunctionBind_orig(functionObj);
-	if (functionObj->FunctionFlags & 0x400) { // NATIVE
-		auto retVal = nativeSet.insert(functionObj->Func);
-		if (retVal.second) {
-			// Not really sure how to get the parent name...
-			auto name = functionObj->GetFullName();
-			auto finalAddr = (unsigned long long)functionObj->Func;
-			writeln(L"%hs = 0x%p", name, finalAddr);
-			logger.writeToLog(string_format("%s = 0x%p", name, finalAddr), false, true);
-		}
-	}
-	else
-	{
-		//writeln(L"NOT NATIVE: %hs", functionObj->GetFullName());
-	}
-}
+//set<void*> nativeSet;
+//void HookedUFunctionBind(UFunction* functionObj)
+//{
+//	UFunctionBind_orig(functionObj);
+//	if (functionObj->FunctionFlags & 0x400) { // NATIVE
+//		auto retVal = nativeSet.insert(functionObj->Func);
+//		if (retVal.second) {
+//			// Not really sure how to get the parent name...
+//			auto name = functionObj->GetFullName();
+//			auto finalAddr = (unsigned long long)functionObj->Func;
+//			writeln(L"%hs = 0x%p", name, finalAddr);
+//			logger.writeToLog(string_format("%s = 0x%p", name, finalAddr), false, true);
+//		}
+//	}
+//	else
+//	{
+//		//writeln(L"NOT NATIVE: %hs", functionObj->GetFullName());
+//	}
+//}
 
 
 SPI_IMPLEMENT_ATTACH

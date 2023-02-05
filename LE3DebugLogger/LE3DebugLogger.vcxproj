@@ -127,7 +127,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "B:\UserProfile\source\repos\ME3Tweaks\LE3-ASI-Plugins\x64\Debug\LE3DebugLogger.asi" "B:\SteamLibrary\steamapps\common\Mass Effect Legendary Edition\Game\ME3\Binaries\Win64\ASI\LE3DebugLogger.asi"</Command>
+      <Command>copy /y "C:\Users\mgame\source\repos\ME3Tweaks\LEASIMods\LE3-ASI-Plugins\x64\Debug\LE3DebugLogger.asi" "B:\SteamLibrary\steamapps\common\Mass Effect Legendary Edition\Game\ME3\Binaries\Win64\ASI\LE3DebugLogger.asi"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
