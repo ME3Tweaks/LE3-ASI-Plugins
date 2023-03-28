@@ -37,7 +37,6 @@ SPI_PLUGINSIDE_ASYNCATTACH;
 
 struct DebuggerFrame
 {
-	FFrame* Stack;
 	UStruct* Node;
 	UObject* Object;
 	BYTE* CodeBaseAddr;
@@ -50,6 +49,7 @@ struct DebuggerFrame
 	USHORT FileNameLength;
 	USHORT NodePathLength;
 	USHORT CurrentPosition;
+	FFrame* Stack;
 };
 
 enum PipeCommands : BYTE
