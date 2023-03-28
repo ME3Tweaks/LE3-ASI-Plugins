@@ -238,6 +238,17 @@ struct FObjectImport : public FObjectResource
 	int SourceIndex;
 };
 
+struct FObjectExport : public FObjectResource
+{
+	int ClassIndex;
+	int SuperIndex;
+	int ArchetypeIndex;
+	long ObjFlags;
+	int SerialSize;
+	int SerialOffset;
+	// There's more but IDK what it is.
+};
+
 bool IsA(class UClass* pClass);
 template<typename T> bool IsA(UObject* object) {
 	return object->IsA(T::StaticClass());

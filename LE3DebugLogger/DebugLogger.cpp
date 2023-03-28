@@ -5,11 +5,11 @@
 
 #include "HookPrototypes.h"
 
-SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"4.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
+SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"5.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_PRELOAD;
 SPI_PLUGINSIDE_ASYNCATTACH;
 
-ME3TweaksASILogger logger("DebugLogger v4", "LE3DebugLogger.log");
+ME3TweaksASILogger logger("DebugLogger v5", "LE3DebugLogger.log");
 
 // Prototype for WinAPI DebugOutput string. We don't put this
 // in prototypes cause this is not part of the game
@@ -38,6 +38,27 @@ UObject* CreateImport_hook(ULinkerLoad* Context, int i)
 		logger.writeToLog(wstring_format(L"Could not resolve #%d: %hs (%hs) in file: %s\n", -i - 1, importEntry.ObjectName.GetName(), importEntry.ClassName.GetName(), Context->Filename.Data), true);
 		logger.flush();
 	}
+	return object;
+}
+
+UObject* CreateExport_hook(ULinkerLoad* Context, int i)
+{
+	logger.writeToLog(wstring_format(L"Creating UExport %i in %s\n", i + 1, Context->Filename.Data), true);
+	UObject* object = CreateExport_orig(Context, i);
+	if (object != nullptr) {
+		logger.writeToLog(wstring_format(L"Loaded UExport %i (%hs)\n", i + 1, object->GetName()), true);
+	}
+	else {
+		logger.writeToLog(wstring_format(L"FAILED TO LOAD UEXPORT %i!\n", i + 1), true);
+	}
+	logger.flush();
+
+	/*if (object == nullptr)
+	{
+		FObjectImport importEntry = Context->ImportMap(i);
+		logger.writeToLog(wstring_format(L"Could not resolve #%d: %hs (%hs) in file: %s\n", -i - 1, importEntry.ObjectName.GetName(), importEntry.ClassName.GetName(), Context->Filename.Data), true);
+		logger.flush();
+	}*/
 	return object;
 }
 
@@ -158,13 +179,13 @@ void LinkerLoadPreload_hook(UnLinker* linker, UObject* objectToLoad)
 	//	//std::this_thread::sleep_for(std::chrono::seconds(8));
 
 	//	// I took this right out of Ghidra, cause I don't want to deal with a FQWORD (Isn't this just a int64?)
-	//int64* objectFlags = (int64*)((int64)objectToLoad + 0xC);
-	//if ((*objectFlags & 0x20000000000) != 0) {
+	int64* objectFlags = (int64*)((int64)objectToLoad + 0xC);
+	if ((*objectFlags & 0x20000000000) != 0) {
 
-	//	// Object needs loaded, so the file is going to be loaded.
-	//	writeln("SeekFreeLoading object: %hs", objectToLoad->GetFullPath());
+		// Object needs loaded, so the file is going to be loaded.
+		writeln("LinkerLoad_Preload object: %hs", objectToLoad->GetFullPath());
+	}
 	//}
-	////}
 	LinkerLoadPreload_orig(linker, objectToLoad);
 }
 
@@ -212,44 +233,95 @@ UObject* StaticAllocateObject_hook(
 
 #pragma endregion PackageLoading
 
+
+// A prototype of UFunction::Bind method used to
+// bind UScript functions to native implementations.
+typedef void(__thiscall* tUFunctionBind)(void* pFunction);
+tUFunctionBind UFunctionBind = nullptr;
+tUFunctionBind UFunctionBind_orig = nullptr;
+
+//set<void*> nativeSet;
+//void HookedUFunctionBind(UFunction* functionObj)
+//{
+//	UFunctionBind_orig(functionObj);
+//	if (functionObj->FunctionFlags & 0x400) { // NATIVE
+//		auto retVal = nativeSet.insert(functionObj->Func);
+//		if (retVal.second) {
+//			// Not really sure how to get the parent name...
+//			auto name = functionObj->GetFullName();
+//			auto finalAddr = (unsigned long long)functionObj->Func;
+//			writeln(L"%hs = 0x%p", name, finalAddr);
+//			logger.writeToLog(string_format("%s = 0x%p", name, finalAddr), false, true);
+//		}
+//	}
+//	else
+//	{
+//		//writeln(L"NOT NATIVE: %hs", functionObj->GetFullName());
+//	}
+//}
+
+
 SPI_IMPLEMENT_ATTACH
 {
 	Common::OpenConsole();
 	writeln(L"Initializing DebugLogger...");
 
 	INIT_CHECK_SDK();
-	LoadCommonClassPointers(InterfacePtr);
 
-	// Log debug output messages
-	INIT_HOOK_PATTERN(OutputDebugStringW);
+	//	writeln(L"Initializing UFunction::Bind hook...");
+	//if (auto const rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&UFunctionBind), "48 8B C4 55 41 56 41 57 48 8D A8 78 F8 FF FF 48 81 EC 70 08 00 00 48 C7 44 24 50 FE FF FF FF 48 89 58 10 48 89 70 18 48 89 78 20 48 8B ?? ?? ?? ?? ?? 48 33 C4 48 89 85 60 07 00 00 48 8B F1 E8 ?? ?? ?? ?? 48 8B F8 F7 86");
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to find UFunction::Bind pattern: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
+	//if (auto const rc = InterfacePtr->InstallHook(MYHOOK "UFunction::Bind", UFunctionBind, HookedUFunctionBind, reinterpret_cast<void**>(&UFunctionBind_orig));
+	//	rc != SPIReturn::Success)
+	//{
+	//	writeln(L"Attach - failed to hook UFunction::Bind: %d / %s", rc, SPIReturnToString(rc));
+	//	return false;
+	//}
+	//writeln(L"Hooked UFunction::Bind");
 
-	// CreateImport
-	INIT_FIND_PATTERN_POSTHOOK(CreateImport, /*"48 8b c4 55 41*/ "54 41 55 41 56 41 57 48 8b ec 48 83 ec 70 48 c7 45 d0 fe ff ff ff 48 89 58 10 48 89 70 18 48 89 78 20 4c 63 e2");
-	INIT_HOOK_PATTERN(CreateImport);
 
-	// OBJECT PRELOAD (called on every object in a package file, can be used for seekfree)
-	//INIT_FIND_PATTERN_POSTHOOK(LinkerLoadPreload, /*"40 55 56 57 41*/ "54 41 55 41 56 41 57 48 8d 6c 24 d9 48 81 ec 90 00 00 00 48 c7 45 e7 fe ff ff ff");
-	//INIT_HOOK_PATTERN(LinkerLoadPreload);
+		LoadCommonClassPointers(InterfacePtr);
 
-	// SYNC LOAD PACKAGE
-	INIT_FIND_PATTERN_POSTHOOK(LoadPackage, /*"48 8b c4 44 89*/"40 18 48 89 48 08 53 56 57 41 56 41 57 48 83 ec 50 48 c7 40 b8 fe ff ff ff");
-	INIT_HOOK_PATTERN(LoadPackage);
+		// Log debug output messages
+		INIT_HOOK_PATTERN(OutputDebugStringW);
 
-	// ASYNC LOAD PACKAGE (CreateLinkerAsync)
-	INIT_FIND_PATTERN_POSTHOOK(LoadPackageAsyncTick, /*"48 8b c4 55 56*/ "57 41 54 41 55 41 56 41 57 48 81 ec 80 00 00 00 48 c7 40 90 fe ff ff ff");
-	INIT_HOOK_PATTERN(LoadPackageAsyncTick);
+		// CreateImport
+		INIT_FIND_PATTERN_POSTHOOK(CreateImport, /*"48 8b c4 55 41*/ "54 41 55 41 56 41 57 48 8b ec 48 83 ec 70 48 c7 45 d0 fe ff ff ff 48 89 58 10 48 89 70 18 48 89 78 20 4c 63 e2");
+		INIT_HOOK_PATTERN(CreateImport);
 
-	// When object instances are allocated, if there's an error
-	// the game dies. This logs which object was being created
-	// that the game died on
-	INIT_FIND_PATTERN_POSTHOOK(StaticAllocateObject, /*"4c 89 44 24 18*/ "55 56 57 41 54 41 55 41 56 41 57 48 8d ac 24 80 fb ff ff 48 81 ec 80 05 00 00");
-	INIT_HOOK_PATTERN(StaticAllocateObject);
+		if (nullptr != std::wcsstr(GetCommandLineW(), L" -debugexportcreation")) {
+			// Hook CreateExport - this will print a ton of logs!
+			INIT_FIND_PATTERN_POSTHOOK(CreateExport, /*89 54 24 10 55*/ "56 57 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 70 48 c7 45 d0 fe ff ff ff 48 89 9c 24 c0 00 00 00 4c 63 e2 48 8b f1 48 89 0d fd 17 6d 01");
+			INIT_HOOK_PATTERN(CreateExport);
+		}
 
-	// Logging functions to hook up for writing to disk
-	hookLoggingFunctions(InterfacePtr);
-	writeln(L"Initialized DebugLogger");
+		// OBJECT PRELOAD (called on every object in a package file, can be used for seekfree)
+		// INIT_FIND_PATTERN_POSTHOOK(LinkerLoadPreload, /*"40 55 56 57 41*/ "54 41 55 41 56 41 57 48 8d 6c 24 d9 48 81 ec 90 00 00 00 48 c7 45 e7 fe ff ff ff");
+		// INIT_HOOK_PATTERN(LinkerLoadPreload);
 
-	return true;
+		// SYNC LOAD PACKAGE
+		INIT_FIND_PATTERN_POSTHOOK(LoadPackage, /*"48 8b c4 44 89*/"40 18 48 89 48 08 53 56 57 41 56 41 57 48 83 ec 50 48 c7 40 b8 fe ff ff ff");
+		INIT_HOOK_PATTERN(LoadPackage);
+
+		// ASYNC LOAD PACKAGE (CreateLinkerAsync)
+		INIT_FIND_PATTERN_POSTHOOK(LoadPackageAsyncTick, /*"48 8b c4 55 56*/ "57 41 54 41 55 41 56 41 57 48 81 ec 80 00 00 00 48 c7 40 90 fe ff ff ff");
+		INIT_HOOK_PATTERN(LoadPackageAsyncTick);
+
+		// When object instances are allocated, if there's an error
+		// the game dies. This logs which object was being created
+		// that the game died on
+		INIT_FIND_PATTERN_POSTHOOK(StaticAllocateObject, /*"4c 89 44 24 18*/ "55 56 57 41 54 41 55 41 56 41 57 48 8d ac 24 80 fb ff ff 48 81 ec 80 05 00 00");
+		INIT_HOOK_PATTERN(StaticAllocateObject);
+
+		// Logging functions to hook up for writing to disk
+		hookLoggingFunctions(InterfacePtr);
+		writeln(L"Initialized DebugLogger");
+
+		return true;
 }
 
 

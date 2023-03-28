@@ -205,6 +205,10 @@ typedef UObject* (*tCreateImport)(ULinkerLoad* Context, int UIndex);
 tCreateImport CreateImport = nullptr;
 tCreateImport CreateImport_orig = nullptr;
 
+typedef UObject* (*tCreateExport)(ULinkerLoad* Context, int UIndex);
+tCreateExport CreateExport = nullptr;
+tCreateExport CreateExport_orig = nullptr;
+
 typedef void (*tProcessEvent)(UObject* Context, UFunction* Function, void* Parms, void* Result);
 tProcessEvent ProcessEvent = nullptr;
 tProcessEvent ProcessEvent_orig = nullptr;
