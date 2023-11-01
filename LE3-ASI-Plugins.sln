@@ -26,6 +26,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3ConsoleExtension", "LE3C
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3LEXInterop", "LE3LEXInterop\LE3LEXInterop.vcxproj", "{3E825F49-5D7E-4064-B5B2-03011B408B6F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LE3FunctionLogger", "LE3FunctionLogger\LE3FunctionLogger.vcxproj", "{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -106,6 +108,14 @@ Global
 		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Release|x64.Build.0 = Release|x64
 		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Release|x86.ActiveCfg = Release|x64
 		{3E825F49-5D7E-4064-B5B2-03011B408B6F}.Release|x86.Build.0 = Release|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Debug|x64.ActiveCfg = Debug|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Debug|x64.Build.0 = Debug|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Debug|x86.ActiveCfg = Debug|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Debug|x86.Build.0 = Debug|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Release|x64.ActiveCfg = Release|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Release|x64.Build.0 = Release|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Release|x86.ActiveCfg = Release|x64
+		{8298E95F-DEAD-440D-B9E6-7B7BC0DF3FE4}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
