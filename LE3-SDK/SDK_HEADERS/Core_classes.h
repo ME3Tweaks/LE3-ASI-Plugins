@@ -732,19 +732,14 @@ public:
 class ULinker : public UObject
 {
 public:
-	// MODIFIED FOR DEBUGLOGGER
-	// No idea if these even correctly map to each other...
-	class UPackage* LinkerRoot;                                              // 0x0060 (0x0008)
-	unsigned char                                      UnknownData00[0xA8];                                   // 0x0068 (0x00A4) MISSED OFFSET
-	struct TArray<FName>                               NameMap;                                                 // 0x011C (0x0010)
-	struct TArray<FObjectImport>                       ImportMap;                                               // 0x011C (0x0010)
-	struct TArray<FObjectExport>                       ExportMap;                                               // 0x011C (0x0010) 
-	unsigned char                                      UnknownData01[0x58];                                   // 0x012C (0x0068) MISSED OFFSET
-	struct FString                                     Filename;                                                // 0x0194 (0x0010)
-	unsigned char                                      UnknownData02[0x4];                                       // 0x01A4 (0x0008) MISSED OFFSET
-	
-	// ORIGINAL:
-	//unsigned char                                      UnknownData00[ 0x150 ];                           		// 0x0060 (0x0150) MISSED OFFSET
+	class UPackage*                                    LinkerRoot;                                              // 0x0060 (0x0008)
+	unsigned char                                      UnknownData00[0xA8];                                   // 0x0068 (0x00A8) MISSED OFFSET
+	struct TArray<FName>                               NameMap;                                                 // 0x0110 (0x0010)
+	struct TArray<FObjectImport>                       ImportMap;                                               // 0x0120 (0x0010)
+	struct TArray<FObjectExport>                       ExportMap;                                               // 0x0130 (0x0010) 
+	unsigned char                                      UnknownData01[0x58];                                   // 0x0140 (0x0058) MISSED OFFSET
+	struct FString                                     Filename;                                                // 0x0198 (0x0010)
+	unsigned char                                      UnknownData02[0x8];                                       // 0x01A8 (0x0008) MISSED OFFSET
 
 private:
 	static UClass* pClassPointer;
@@ -774,7 +769,11 @@ public:
 class ULinkerLoad : public ULinker
 {
 public:
-	unsigned char                                      UnknownData00[ 0x5FC ];                           		// 0x01B0 (0x05FC) MISSED OFFSET
+	unsigned char                                      UnknownData00[0x90];                            		    // 0x01B0 (0x0090) MISSED OFFSET
+	DWORD                                              LoadFlags;                                               // 0x0240 (0x0004)
+	unsigned char                                      UnknownData01[ 0x414 ];                           		// 0x0244 (0x0414) MISSED OFFSET
+	void* /*FArchive*/                                 Loader;                                               // 0x0658 (0x0008)
+	unsigned char                                      UnknownData02[ 0x14C ];                           		// 0x0660 (0x014C) MISSED OFFSET
 
 private:
 	static UClass* pClassPointer;
