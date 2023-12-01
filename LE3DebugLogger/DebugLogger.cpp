@@ -107,10 +107,60 @@ void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* p
 {
 	logMessage(L"appErrorLogf", formatStr, param1, param2, param3, param4);
 }
-#pragma endrgion FErrorOutputDevice::Logf
+#pragma endregion FErrorOutputDevice::Logf
 
+#pragma region AccessedNoneVerboseLogger
+void* AccessedNone_location = nullptr;
+void AccessedNoneVerboseLogger(const FFrame* stack)
+{
+	const auto funcOrStateFullPath = string(stack->Node->GetFullPath()); //convert to string to copy, since GetFullPath uses a static buffer and would be overridden by the next call
+	const auto thisFullPath = stack->Object->GetFullPath();
+	const long long scriptOffset = stack->Code - stack->Node->Script.Data;
+	logger.writeToLog(string_format("Accessed None in '%s' on '%s' at %i bytes into the bytecode", funcOrStateFullPath.c_str(), thisFullPath, scriptOffset), true);
+}
 
+bool PatchMemory(const void* patch, const SIZE_T patchSize)
+{
+	//make the memory we're going to patch writeable
+	DWORD  oldProtect;
+	if (!VirtualProtect(AccessedNone_location, patchSize, PAGE_EXECUTE_READWRITE, &oldProtect))
+		return false;
 
+	//overwrite with our patch
+	memcpy(AccessedNone_location, patch, patchSize);
+
+	//restore the memory's old protection level
+	VirtualProtect(AccessedNone_location, patchSize, oldProtect, &oldProtect);
+	FlushInstructionCache(GetCurrentProcess(), AccessedNone_location, patchSize);
+	return true;
+}
+
+void AttachAccessedNoneVerboseLogger()
+{
+	static bool isPatched;
+	if (isPatched == true)
+	{
+		return;
+	}
+	BYTE patch[] = { 
+						   0x48, 0x89, 0xF9, //MOV RCX, RDI //Move the FFrame pointer into the 1st argument register
+						   0x49, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV R11, 0xFFFFFFFFFFFFFFFF //put address of AccessedNoneVerboseLogger into R14 (actual address filled in at runtime) 
+						   0x41, 0xFF, 0xD3,  //CALL R11 //Call AccessedNoneVerboseLogger
+
+		//remaining bytes are NOPs of various sizes: https://stackoverflow.com/questions/43991155/what-does-nop-dword-ptr-raxrax-x64-assembly-instruction-do/50594130#50594130
+		0x66, 0x90 };
+
+	//place the absolute address of AccessedNoneVerboseLogger into the patch
+	void* funcPtr = AccessedNoneVerboseLogger;
+	memcpy(patch + 5, &funcPtr, sizeof(funcPtr));
+
+	isPatched = PatchMemory(patch, sizeof(patch));
+	if (!isPatched)
+	{
+		logger.writeToLog("FAILED TO ATTACH VERBOSE ACCESSED NONE LOGGER!", true, true);
+	}
+}
+#pragma endregion AccessedNoneVerboseLogger
 
 
 // Hooks logging functions
@@ -128,6 +178,9 @@ bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 
 	INIT_FIND_PATTERN_POSTHOOK(FErrorOutputDeviceLogf, /*48 89 54 24 10*/ "4c 89 44 24 18 4c 89 4c 24 20 57 48 83 ec 50 83 79 08 00 48 8b f9 0f 85 c1 00 00 00 83 79 0c 00 74 0d 83 3d 22 c5 6c 01 00 0f 85 ae 00 00 00");
 	INIT_HOOK_PATTERN(FErrorOutputDeviceLogf);
+
+	INIT_FIND_PATTERN(AccessedNone_location, "48 8b 0d 5f b9 6e 01 48 85 c9 74 06 48 8b 01 ff 50 20")
+		AttachAccessedNoneVerboseLogger();
 
 	return true;
 }
