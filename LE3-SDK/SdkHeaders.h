@@ -222,6 +222,12 @@ struct FScriptDelegate
 	struct FName		FunctionName; 
 };
 
+struct FScriptInterface
+{
+	UObject* Object;
+	void* Interface;
+};
+
 // COPIED FROM LE1 SDK - NOT SURE IF THIS NEEDS CHANGED...
 struct FObjectResource
 {

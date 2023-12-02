@@ -881,7 +881,21 @@ public:
 class UProperty : public UField
 {
 public:
-	unsigned char                                      UnknownData00[ 0x60 ];                            		// 0x0070 (0x0060) MISSED OFFSET
+	int								ArrayDim;						//0x0070 (0x04)
+	int								ElementSize;					//0x0074 (0x04)
+	unsigned long long				PropertyFlags;					//0x0078 (0x08)
+	unsigned short					RepOffset;						//0x0080 (0x02)
+	unsigned short					RepIndex;						//0x0082 (0x02)
+	struct FName					Category;						//0x0084 (0x08)
+	class							UEnum* ArraySizeEnum;			//0x008C (0x08)
+	int								Offset;							//0x0094 (0x04)
+	void*							PropertyLinkNext;				//0x0098 (0x08)
+	void*							ConfigLinkNext;					//0x00A0 (0x08)
+	void*							ConstructorLinkNext;			//0x00A8 (0x08)
+	void*							NextRef;						//0x00B0 (0x08)
+	void*							RepOwner;						//0x00B8 (0x08)
+	void*							ComponentPropertyLinkNext;		//0x00C0 (0x08)
+	void*							TransientPropertyLinkNext;		//0x00C8 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -896,7 +910,7 @@ public:
 class UStructProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x8 ];                             		// 0x00D0 (0x0008) MISSED OFFSET
+	class UStruct*					Struct;							// 0x00D0 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -939,7 +953,7 @@ public:
 class UObjectProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x8 ];                             		// 0x00D0 (0x0008) MISSED OFFSET
+	class UClass* PropertyClass;                             // 0x00D0 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -968,7 +982,7 @@ public:
 class UClassProperty : public UObjectProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x8 ];                             		// 0x00D8 (0x0008) MISSED OFFSET
+	class UClass* MetaClass;	                                // 0x00D8 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -997,7 +1011,8 @@ public:
 class UMapProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x10 ];                            		// 0x00D0 (0x0010) MISSED OFFSET
+	class UProperty* Key;										// 0x00D0 (0x08)
+	class UProperty* Value;										// 0x00D8 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -1026,7 +1041,7 @@ public:
 class UInterfaceProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x8 ];                             		// 0x00D0 (0x0008) MISSED OFFSET
+	class UClass* InterfaceClass;	                            // 0x00D0 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -1055,7 +1070,8 @@ public:
 class UDelegateProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x10 ];                            		// 0x00D0 (0x0010) MISSED OFFSET
+	class UFunction* Function;	                            //0x00D0 (0x08)
+	class UFunction* SourceDelegate;                       //0x00D8 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -1070,7 +1086,7 @@ public:
 class UByteProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x8 ];                             		// 0x00D0 (0x0008) MISSED OFFSET
+	class UEnum* Enum;                                                    //0x00D0 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -1085,7 +1101,7 @@ public:
 class UBoolProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x8 ];                             		// 0x00D0 (0x0008) MISSED OFFSET
+	DWORD		                                       BitMask;                                                 // 0x00D0 (0x04)
 
 private:
 	static UClass* pClassPointer;
@@ -1115,7 +1131,7 @@ public:
 class UArrayProperty : public UProperty
 {
 public:
-	unsigned char                                      UnknownData00[ 0x8 ];                             		// 0x00D0 (0x0008) MISSED OFFSET
+	class UProperty* Inner;                                                   // 0x00D0 (0x08)
 
 private:
 	static UClass* pClassPointer;
@@ -1130,7 +1146,8 @@ public:
 class UEnum : public UField
 {
 public:
-	unsigned char                                      UnknownData00[ 0x14 ];                            		// 0x0070 (0x0014) MISSED OFFSET
+	TArray<FName>                                      Names;												// 0x0070 (0x0010)
+	unsigned char                                      Unknown80[ 0x4 ];                                    // 0x0080 (0x0004) MISSED OFFSET
 
 private:
 	static UClass* pClassPointer;
@@ -1145,7 +1162,7 @@ public:
 class UConst : public UField
 {
 public:
-	unsigned char                                      UnknownData00[ 0x10 ];                            		// 0x0070 (0x0010) MISSED OFFSET
+	struct FString                                     Value;                                                   // 0x0070 (0x0010)
 
 private:
 	static UClass* pClassPointer;

@@ -4,6 +4,7 @@
 #include <chrono>         // std::chrono::seconds
 
 #include "HookPrototypes.h"
+#include "PropertyLogger.h"
 
 SPI_PLUGINSIDE_SUPPORT(L"DebugLogger", L"5.0.0", L"ME3Tweaks", SPI_GAME_LE3, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_PRELOAD;
@@ -116,7 +117,11 @@ void AccessedNoneVerboseLogger(const FFrame* stack)
 	const auto funcOrStateFullPath = string(stack->Node->GetFullPath()); //convert to string to copy, since GetFullPath uses a static buffer and would be overridden by the next call
 	const auto thisFullPath = stack->Object->GetFullPath();
 	const long long scriptOffset = stack->Code - stack->Node->Script.Data;
-	logger.writeToLog(string_format("Accessed None in '%s' on '%s' at %i bytes into the bytecode", funcOrStateFullPath.c_str(), thisFullPath, scriptOffset), true);
+	logger.writeToLog(string_format("Accessed None in '%s' on '%s' at %i bytes into the bytecode", funcOrStateFullPath.c_str(), thisFullPath, scriptOffset), true, true);
+	logger.writeToLog("Values of arguments and locals when None was accessed:", false, true);
+	PropertyLogger propLogger;
+	propLogger.PrintPropertyValues(stack->Locals, stack->Node, stack->OutParms);
+	logger.writeToLog(propLogger.GetString(), false, true);
 }
 
 bool PatchMemory(const void* patch, const SIZE_T patchSize)

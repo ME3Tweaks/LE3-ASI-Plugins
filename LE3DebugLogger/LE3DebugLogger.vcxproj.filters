@@ -26,5 +26,8 @@
     <ClInclude Include="HookPrototypes.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="PropertyLogger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
