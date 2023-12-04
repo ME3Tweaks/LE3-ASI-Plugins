@@ -4,7 +4,7 @@
 
 class PropertyLogger
 {
-	std::stringstream logFile;
+	std::wstringstream logFile;
 
 	int numSpacesIndent = 0;
 
@@ -22,7 +22,7 @@ class PropertyLogger
 		}
 	}
 
-	std::stringstream&& indent()
+	std::wstringstream&& indent()
 	{
 		for (int i = 0; i < numSpacesIndent; ++i)
 		{
@@ -32,14 +32,14 @@ class PropertyLogger
 	}
 
 
-	std::stringstream&& out()
+	std::wstringstream&& out()
 	{
 		return std::move(logFile);
 	}
 
 public:
 
-	std::string GetString() const
+	std::wstring GetString() const
 	{
 		return logFile.str();
 	}

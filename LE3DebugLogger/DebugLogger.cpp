@@ -110,7 +110,7 @@ void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* p
 }
 #pragma endregion FErrorOutputDevice::Logf
 
-#pragma region AccessedNoneVerboseLogger
+#pragma region ScriptErrorVerboseLogger
 void* AccessedNone_location = nullptr;
 void AccessedNoneVerboseLogger(const FFrame* stack)
 {
@@ -124,19 +124,19 @@ void AccessedNoneVerboseLogger(const FFrame* stack)
 	logger.writeToLog(propLogger.GetString(), false, true);
 }
 
-bool PatchMemory(const void* patch, const SIZE_T patchSize)
+bool PatchMemory(const void* patch, const SIZE_T patchSize, void* patchLocation)
 {
 	//make the memory we're going to patch writeable
 	DWORD  oldProtect;
-	if (!VirtualProtect(AccessedNone_location, patchSize, PAGE_EXECUTE_READWRITE, &oldProtect))
+	if (!VirtualProtect(patchLocation, patchSize, PAGE_EXECUTE_READWRITE, &oldProtect))
 		return false;
 
 	//overwrite with our patch
-	memcpy(AccessedNone_location, patch, patchSize);
+	memcpy(patchLocation, patch, patchSize);
 
 	//restore the memory's old protection level
-	VirtualProtect(AccessedNone_location, patchSize, oldProtect, &oldProtect);
-	FlushInstructionCache(GetCurrentProcess(), AccessedNone_location, patchSize);
+	VirtualProtect(patchLocation, patchSize, oldProtect, &oldProtect);
+	FlushInstructionCache(GetCurrentProcess(), patchLocation, patchSize);
 	return true;
 }
 
@@ -149,7 +149,7 @@ void AttachAccessedNoneVerboseLogger()
 	}
 	BYTE patch[] = { 
 						   0x48, 0x89, 0xF9, //MOV RCX, RDI //Move the FFrame pointer into the 1st argument register
-						   0x49, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV R11, 0xFFFFFFFFFFFFFFFF //put address of AccessedNoneVerboseLogger into R14 (actual address filled in at runtime) 
+						   0x49, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV R11, 0xFFFFFFFFFFFFFFFF //put address of AccessedNoneVerboseLogger into R11 (actual address filled in at runtime) 
 						   0x41, 0xFF, 0xD3,  //CALL R11 //Call AccessedNoneVerboseLogger
 
 		//remaining bytes are NOPs of various sizes: https://stackoverflow.com/questions/43991155/what-does-nop-dword-ptr-raxrax-x64-assembly-instruction-do/50594130#50594130
@@ -159,13 +159,60 @@ void AttachAccessedNoneVerboseLogger()
 	void* funcPtr = AccessedNoneVerboseLogger;
 	memcpy(patch + 5, &funcPtr, sizeof(funcPtr));
 
-	isPatched = PatchMemory(patch, sizeof(patch));
+	isPatched = PatchMemory(patch, sizeof(patch), AccessedNone_location);
 	if (!isPatched)
 	{
 		logger.writeToLog("FAILED TO ATTACH VERBOSE ACCESSED NONE LOGGER!", true, true);
 	}
 }
-#pragma endregion AccessedNoneVerboseLogger
+
+void ArrayOOBVerboseLoggerInternal(const FFrame* stack)
+{
+	const auto funcOrStateFullPath = string(stack->Node->GetFullPath()); //convert to string to copy, since GetFullPath uses a static buffer and would be overridden by the next call
+	const auto thisFullPath = stack->Object->GetFullPath();
+	const long long scriptOffset = stack->Code - stack->Node->Script.Data;
+	logger.writeToLog(string_format("Array OOB in '%s' on '%s' at %i bytes into the bytecode", funcOrStateFullPath.c_str(), thisFullPath, scriptOffset), true, true);
+	logger.writeToLog("Values of arguments and locals when array was accessed out of bounds:", false, true);
+	PropertyLogger propLogger;
+	propLogger.PrintPropertyValues(stack->Locals, stack->Node, stack->OutParms);
+	logger.writeToLog(propLogger.GetString(), false, true);
+}
+
+void* ArrayOOBDynLocal_location = nullptr;
+void* ArrayOOBDynInstance_location = nullptr;
+void* ArrayOOBStatic_location = nullptr;
+void ArrayOOBLocalVerboseLogger(const FFrame* stack, void* addressOfThisFunction, wchar_t* formatString, wchar_t* arrayPropName, const int index, const int arrayLen)
+{
+	const auto preString = wstring_format(L"%s: %s", L"appLogf", formatString);
+	logger.writeToLog(wstring_format(preString.data(), arrayPropName, index, arrayLen), true, true);
+	ArrayOOBVerboseLoggerInternal(stack);
+}
+
+void ArrayOOBWithObjectNameVerboseLogger(const FFrame* stack, void* addressOfThisFunction, wchar_t* formatString, wchar_t* objName, wchar_t* arrayPropName, const int index, const int arrayLen)
+{
+	const auto preString = wstring_format(L"%s: %s", L"appLogf", formatString);
+	logger.writeToLog(wstring_format(preString.data(), objName, arrayPropName, index, arrayLen), true, true);
+	ArrayOOBVerboseLoggerInternal(stack);
+}
+
+void AttachArrayOOBVerboseLogger(void* funcPtr, void* patchLocation)
+{
+	BYTE patch[] = {
+						   0x48, 0xBA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV RDX, 0xFFFFFFFFFFFFFFFF //put address of ArrayOOBVerboseLogger into RDX (actual address filled in at runtime) 
+						   0x49, 0x8B, 0xCD, //MOV RCX, R13 //Move the FFrame pointer into the 1st argument register
+						   0xFF, 0xD2,  //CALL RDX //Call ArrayOOBVerboseLogger
+	};
+
+	//place the absolute address of ArrayOOBVerboseLogger into the patch
+	memcpy(patch + 2, &funcPtr, sizeof(funcPtr));
+
+	const bool isPatched = PatchMemory(patch, sizeof(patch), patchLocation);
+	if (!isPatched)
+	{
+		logger.writeToLog("FAILED TO ATTACH VERBOSE ARRAY OUT OF BOUNDS LOGGER!", true, true);
+	}
+}
+#pragma endregion ScriptErrorVerboseLogger
 
 
 // Hooks logging functions
@@ -185,8 +232,16 @@ bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 	INIT_HOOK_PATTERN(FErrorOutputDeviceLogf);
 
 	INIT_FIND_PATTERN(AccessedNone_location, "48 8b 0d 5f b9 6e 01 48 85 c9 74 06 48 8b 01 ff 50 20")
-		AttachAccessedNoneVerboseLogger();
+	AttachAccessedNoneVerboseLogger();
 
+	INIT_FIND_PATTERN(ArrayOOBDynLocal_location, "48 8b 15 fd 0c 6c 01 49 8b cd e8 0d c9 02 00 90")
+	AttachArrayOOBVerboseLogger(ArrayOOBLocalVerboseLogger, ArrayOOBDynLocal_location);
+
+	INIT_FIND_PATTERN(ArrayOOBDynInstance_location, "48 8b 15 8c 0b 6c 01 49 8b cd e8 9c c7 02 00 90")
+	AttachArrayOOBVerboseLogger(ArrayOOBWithObjectNameVerboseLogger, ArrayOOBDynInstance_location);
+
+	INIT_FIND_PATTERN(ArrayOOBStatic_location, "48 8b 15 04 10 6c 01 49 8b cd e8 14 cc 02 00 90")
+	AttachArrayOOBVerboseLogger(ArrayOOBWithObjectNameVerboseLogger, ArrayOOBStatic_location);
 	return true;
 }
 
