@@ -111,14 +111,14 @@ void FErrorOutputDeviceLogf_hook(void* outputDevice, wchar_t* formatStr, void* p
 #pragma endregion FErrorOutputDevice::Logf
 
 #pragma region ScriptErrorVerboseLogger
-void* AccessedNone_location = nullptr;
-void AccessedNoneVerboseLogger(const FFrame* stack)
+
+void VerboseLoggerInternal(const FFrame* stack)
 {
 	const auto funcOrStateFullPath = string(stack->Node->GetFullPath()); //convert to string to copy, since GetFullPath uses a static buffer and would be overridden by the next call
 	const auto thisFullPath = stack->Object->GetFullPath();
 	const long long scriptOffset = stack->Code - stack->Node->Script.Data;
-	logger.writeToLog(string_format("Accessed None in '%s' on '%s' at %i bytes into the bytecode", funcOrStateFullPath.c_str(), thisFullPath, scriptOffset), true, true);
-	logger.writeToLog("Values of arguments and locals when None was accessed:", false, true);
+	logger.writeToLog(string_format("Error in '%s' on '%s' at %i bytes into the bytecode", funcOrStateFullPath.c_str(), thisFullPath, scriptOffset), true, true);
+	logger.writeToLog("Values of arguments and locals:", false, true);
 	PropertyLogger propLogger;
 	propLogger.PrintPropertyValues(stack->Locals, stack->Node, stack->OutParms);
 	logger.writeToLog(propLogger.GetString(), false, true);
@@ -140,6 +140,12 @@ bool PatchMemory(const void* patch, const SIZE_T patchSize, void* patchLocation)
 	return true;
 }
 
+void AccessedNoneVerboseLogger(const FFrame* stack)
+{
+	VerboseLoggerInternal(stack);
+}
+
+void* AccessedNone_location = nullptr;
 void AttachAccessedNoneVerboseLogger()
 {
 	static bool isPatched;
@@ -166,50 +172,73 @@ void AttachAccessedNoneVerboseLogger()
 	}
 }
 
-void ArrayOOBVerboseLoggerInternal(const FFrame* stack)
-{
-	const auto funcOrStateFullPath = string(stack->Node->GetFullPath()); //convert to string to copy, since GetFullPath uses a static buffer and would be overridden by the next call
-	const auto thisFullPath = stack->Object->GetFullPath();
-	const long long scriptOffset = stack->Code - stack->Node->Script.Data;
-	logger.writeToLog(string_format("Array OOB in '%s' on '%s' at %i bytes into the bytecode", funcOrStateFullPath.c_str(), thisFullPath, scriptOffset), true, true);
-	logger.writeToLog("Values of arguments and locals when array was accessed out of bounds:", false, true);
-	PropertyLogger propLogger;
-	propLogger.PrintPropertyValues(stack->Locals, stack->Node, stack->OutParms);
-	logger.writeToLog(propLogger.GetString(), false, true);
-}
-
-void* ArrayOOBDynLocal_location = nullptr;
-void* ArrayOOBDynInstance_location = nullptr;
-void* ArrayOOBStatic_location = nullptr;
 void ArrayOOBLocalVerboseLogger(const FFrame* stack, void* addressOfThisFunction, wchar_t* formatString, wchar_t* arrayPropName, const int index, const int arrayLen)
 {
 	const auto preString = wstring_format(L"%s: %s", L"appLogf", formatString);
 	logger.writeToLog(wstring_format(preString.data(), arrayPropName, index, arrayLen), true, true);
-	ArrayOOBVerboseLoggerInternal(stack);
+	VerboseLoggerInternal(stack);
 }
 
 void ArrayOOBWithObjectNameVerboseLogger(const FFrame* stack, void* addressOfThisFunction, wchar_t* formatString, wchar_t* objName, wchar_t* arrayPropName, const int index, const int arrayLen)
 {
 	const auto preString = wstring_format(L"%s: %s", L"appLogf", formatString);
 	logger.writeToLog(wstring_format(preString.data(), objName, arrayPropName, index, arrayLen), true, true);
-	ArrayOOBVerboseLoggerInternal(stack);
+	VerboseLoggerInternal(stack);
 }
 
-void AttachArrayOOBVerboseLogger(void* funcPtr, void* patchLocation)
+void DivideBy0VerboseLogger(const FFrame* stack, void* addressOfThisFunction, void* undefined)
+{
+	logger.writeToLog("appLogf: Divide by zero", true, true);
+	VerboseLoggerInternal(stack);
+}
+
+void ModuloBy0VerboseLogger(const FFrame* stack, void* addressOfThisFunction, void* undefined)
+{
+	logger.writeToLog("appLogf: Modulo by zero", true, true);
+	VerboseLoggerInternal(stack);
+}
+
+void SqrtOfNegativeNumberVerboseLogger(const FFrame* stack, void* addressOfThisFunction, void* undefined)
+{
+	logger.writeToLog("appLogf: Attempt to take Sqrt() of negative number - returning 0.", true, true);
+	VerboseLoggerInternal(stack);
+}
+
+void AttachArrayOOBVerboseLogger(void* funcPtr, void* patchLocation, const char* name)
 {
 	BYTE patch[] = {
-						   0x48, 0xBA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV RDX, 0xFFFFFFFFFFFFFFFF //put address of ArrayOOBVerboseLogger into RDX (actual address filled in at runtime) 
+						   0x48, 0xBA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV RDX, 0xFFFFFFFFFFFFFFFF //put address of logging function into RDX (actual address filled in at runtime) 
 						   0x49, 0x8B, 0xCD, //MOV RCX, R13 //Move the FFrame pointer into the 1st argument register
-						   0xFF, 0xD2,  //CALL RDX //Call ArrayOOBVerboseLogger
+						   0xFF, 0xD2,  //CALL RDX //Call logging function
 	};
 
-	//place the absolute address of ArrayOOBVerboseLogger into the patch
+	//place the absolute address of logging function into the patch
 	memcpy(patch + 2, &funcPtr, sizeof(funcPtr));
 
 	const bool isPatched = PatchMemory(patch, sizeof(patch), patchLocation);
 	if (!isPatched)
 	{
-		logger.writeToLog("FAILED TO ATTACH VERBOSE ARRAY OUT OF BOUNDS LOGGER!", true, true);
+		logger.writeToLog("Failed to attach ", true, false);
+		logger.writeToLog(name, false, true);
+	}
+}
+
+void AttachMathVerboseLogger(void* funcPtr, void* patchLocation, const char* name)
+{
+	BYTE patch[] = {
+						   0x48, 0xBA, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //MOV RDX, 0xFFFFFFFFFFFFFFFF //put address of logging function into RDX (actual address filled in at runtime) 
+						   0x48, 0x8B, 0xCB, //MOV RCX, RBX //Move the FFrame pointer into the 1st argument register
+						   0xFF, 0xD2,  //CALL RDX //Call logging function
+	};
+
+	//place the absolute address of logging function into the patch
+	memcpy(patch + 2, &funcPtr, sizeof(funcPtr));
+
+	const bool isPatched = PatchMemory(patch, sizeof(patch), patchLocation);
+	if (!isPatched)
+	{
+		logger.writeToLog("Failed to attach ", true, false);
+		logger.writeToLog(name, false, true);
 	}
 }
 #pragma endregion ScriptErrorVerboseLogger
@@ -218,6 +247,8 @@ void AttachArrayOOBVerboseLogger(void* funcPtr, void* patchLocation)
 // Hooks logging functions
 bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 {
+#define nameof(x) #x
+
 	// Allows logging LogInternal() calls (even user ones)
 	INIT_FIND_PATTERN_POSTHOOK(LogInternal, /*"40 57 48 83 ec */"40 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 50 48 89 74 24 60 48 8b da 33 f6 48 89 74 24 28 48 89 74 24 30");
 	INIT_HOOK_PATTERN(LogInternal);
@@ -234,15 +265,54 @@ bool hookLoggingFunctions(ISharedProxyInterface* InterfacePtr)
 	INIT_FIND_PATTERN(AccessedNone_location, "48 8b 0d 5f b9 6e 01 48 85 c9 74 06 48 8b 01 ff 50 20")
 	AttachAccessedNoneVerboseLogger();
 
-	INIT_FIND_PATTERN(ArrayOOBDynLocal_location, "48 8b 15 fd 0c 6c 01 49 8b cd e8 0d c9 02 00 90")
-	AttachArrayOOBVerboseLogger(ArrayOOBLocalVerboseLogger, ArrayOOBDynLocal_location);
+#define ATTACH_VERBOSE_LOGGER(TYPE, LOGFUNCTION, PATTERN) \
+	{void* LOGFUNCTION##_location = nullptr; \
+	INIT_FIND_PATTERN(LOGFUNCTION##_location, PATTERN) \
+	Attach##TYPE##VerboseLogger(LOGFUNCTION, LOGFUNCTION##_location, #LOGFUNCTION " at " PATTERN);} \
 
-	INIT_FIND_PATTERN(ArrayOOBDynInstance_location, "48 8b 15 8c 0b 6c 01 49 8b cd e8 9c c7 02 00 90")
-	AttachArrayOOBVerboseLogger(ArrayOOBWithObjectNameVerboseLogger, ArrayOOBDynInstance_location);
+	//dynamic array, local variable
+	ATTACH_VERBOSE_LOGGER(ArrayOOB, ArrayOOBLocalVerboseLogger, "48 8b 15 fd 0c 6c 01 49 8b cd e8 0d c9 02 00 90")
 
-	INIT_FIND_PATTERN(ArrayOOBStatic_location, "48 8b 15 04 10 6c 01 49 8b cd e8 14 cc 02 00 90")
-	AttachArrayOOBVerboseLogger(ArrayOOBWithObjectNameVerboseLogger, ArrayOOBStatic_location);
+	//dynamic array, instance variable
+	ATTACH_VERBOSE_LOGGER(ArrayOOB, ArrayOOBWithObjectNameVerboseLogger, "48 8b 15 8c 0b 6c 01 49 8b cd e8 9c c7 02 00 90")
+
+	//static array
+	ATTACH_VERBOSE_LOGGER(ArrayOOB, ArrayOOBWithObjectNameVerboseLogger, "48 8b 15 04 10 6c 01 49 8b cd e8 14 cc 02 00 90")
+
+	// float / float
+	ATTACH_VERBOSE_LOGGER(Math, DivideBy0VerboseLogger, "4c 8d 05 c4 fa fa 00 48 8b cb e8 ec 7a 03 00")
+
+	// float /= float
+	ATTACH_VERBOSE_LOGGER(Math, DivideBy0VerboseLogger, "4c 8d 05 4b f1 fa 00 48 8b cb e8 73 71 03 00")
+
+	// rotator /= float
+	ATTACH_VERBOSE_LOGGER(Math, DivideBy0VerboseLogger, "4c 8d 05 48 df f9 00 48 8b cb e8 70 5f 02 00")
+
+	// rotator / float
+	ATTACH_VERBOSE_LOGGER(Math, DivideBy0VerboseLogger, "4c 8d 05 f9 dc f9 00 48 8b cb e8 21 5d 02 00")
+
+	// vector /= float
+	ATTACH_VERBOSE_LOGGER(Math, DivideBy0VerboseLogger, "4c 8d 05 e8 c9 f9 00 48 8b cb e8 10 4a 02 00")
+
+	// vector / float
+	ATTACH_VERBOSE_LOGGER(Math, DivideBy0VerboseLogger, "4c 8d 05 c9 be f9 00 48 8b cb e8 f1 3e 02 00")
+
+	// int / int
+	ATTACH_VERBOSE_LOGGER(Math, DivideBy0VerboseLogger, "4c 8d 05 8f 91 f9 00 48 8b cb e8 b7 11 02 00")
+
+	// float % float
+	ATTACH_VERBOSE_LOGGER(Math, ModuloBy0VerboseLogger, "4c 8d 05 04 fa fa 00 48 8b cb e8 0c 7a 03 00")
+
+	// int % int
+	ATTACH_VERBOSE_LOGGER(Math, ModuloBy0VerboseLogger, "4c 8d 05 cf 90 f9 00 48 8b cb e8 d7 10 02 00")
+
+	ATTACH_VERBOSE_LOGGER(Math, SqrtOfNegativeNumberVerboseLogger, "4c 8d 05 05 e9 fa 00 48 8b cb e8 dd 68 03 00")
+
+
 	return true;
+
+#undef ATTACH_VERBOSE_LOGGER
+#undef nameof
 }
 
 #pragma region PackageLoading
