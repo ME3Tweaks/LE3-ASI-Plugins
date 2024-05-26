@@ -149,24 +149,25 @@ void breakState()
 	isStepping = false;
 
 	SendMsgToLEX(L"Break", DebuggerStack.top());
-
 	MSG msg;
-	BOOL bRet;
-	while ((bRet = GetMessage(&msg, nullptr, 0, 0)) != 0)
+	while (true)
 	{
-		if (bRet == -1 || msg.message == WM_CLOSE)
-		{
-			msg.message = WM_QUIT;
-			pendingDetach = true;
-			break;
-		}
 		if (resume)
 		{
 			resume = false;
 			break;
 		}
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT || msg.message == WM_CLOSE)
+			{
+				msg.message = WM_QUIT;
+				pendingDetach = true;
+				break;
+			}
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
 	if (msg.message == WM_QUIT)
 	{
@@ -570,7 +571,6 @@ char* ExecutionLoopPattern = "4c 8d 35 14 f8 6f 01 80 38 04 74 29 48 8b 43 28";
 				ProcessCommand(buffer, numBytesRead);
 			}
 		}
-
 		DisconnectNamedPipe(hPipe);
 	}
 
