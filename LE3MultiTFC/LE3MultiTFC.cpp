@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <map>
+#include <set>
 #include <Shlwapi.h>
 
 #include "../../Shared-ASI/Common.h"
@@ -21,193 +22,111 @@ constexpr bool GIsRelease = true;
 
 ME3TweaksASILogger logger("LE3MultiTFC v1", "LE3MultiTFC.log");
 
-bool ContentScanComplete = false;
+// List of DLC we have additionally mounted. The game seems to mount TFC multiple times, we don't for performance.
+set<std::wstring> MountedDLCNames;
 
-// Fixes bad launcher logic when not using Autoboot (sets the wrong working directory)
-void SetWorkingDirectory() {
-	WCHAR path[MAX_PATH];
-	GetModuleFileNameW(NULL, path, MAX_PATH);
-	std::filesystem::path exePath = path;
-	SetCurrentDirectoryW(exePath.parent_path().c_str());
-}
-
-// Functions used to make a list of available DLCs.
-// ======================================================================
-
-std::wstring GetDLCsRoot()
-{
-	wchar_t modulePath[512];
-
-	GetModuleFileNameW(nullptr, modulePath, 512);
-	PathRemoveFileSpecW(modulePath); // Remove ASI
-	PathRemoveFileSpecW(modulePath); // Remove Win64
-	PathRemoveFileSpecW(modulePath); // Remove Binaries
-
-	std::wstring root;
-	root.append(modulePath);
-	root.append(L"\\BioGame\\DLC\\");
-
-	return root;
-}
-
-std::vector<std::wstring> GetDLCTFCs(std::wstring&& searchRoot)
-{
-	std::vector<std::wstring> extraTFCsToRegister{};
-	searchRoot.append(L"*");
-
-	WIN32_FIND_DATA fd;
-	HANDLE handle = FindFirstFileW(searchRoot.c_str(), &fd);
-	if (handle != INVALID_HANDLE_VALUE) {
-		do
-		{
-			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY && wcslen(fd.cFileName) > 8
-				&& fd.cFileName[0] == L'D' && fd.cFileName[1] == L'L' && fd.cFileName[2] == L'C' && fd.cFileName[3] == L'_'
-				&& fd.cFileName[4] == L'M' && fd.cFileName[5] == L'O' && fd.cFileName[6] == L'D' && fd.cFileName[7] == L'_')
-			{
-				wchar_t autoloadPath[512];
-				swprintf_s(autoloadPath, 512, L"..\\..\\BioGame\\DLC\\%s\\CookedPCConsole", fd.cFileName);
-
-				if (std::filesystem::exists(autoloadPath))
-				{
-					std::wstring defaultPath = autoloadPath;
-					defaultPath += L"\\Textures_";
-					defaultPath += fd.cFileName;
-					defaultPath += L".tfc";
-
-					// Find TFCs in CookedPCConsole folder
-					std::wstring path(autoloadPath);
-					std::wstring ext(L".tfc");
-
-					for (auto& p : std::filesystem::recursive_directory_iterator(path))
-					{
-						if (p.path().extension() == ext) 
-						{
-							auto lpath = p.path();
-							auto rpath = defaultPath;
-							if (p.path().compare(defaultPath) != 0)
-							{
-								logger.writeWideLineToLog(wstring_format(L"Found additional mod TFC: %s", p.path().c_str()), true, true);
-								extraTFCsToRegister.emplace_back(p.path());
-							}
-						}
-					}
-				}
-			}
-		} while (FindNextFile(handle, &fd) != false);
-	}
-	return extraTFCsToRegister;
-}
-
-// HasAtLeastOneBasegameTFC: So we know when we can call RegisterTFC
-typedef bool (*tNoParamBool)();
-tNoParamBool HasAtLeastOneBasegameTFC = nullptr;
-
-// ======================================================================
-// RegisterTFC prototype so we can call it to register our TFCs
-// =====================================================================
-bool hasRegisteredDLCs = false;
+//
+//// ======================================================================
+//// RegisterTFC prototype so we can call it to register our TFCs
+//// =====================================================================
 typedef void (*tRegisterTFC)(FString* name);
 tRegisterTFC RegisterTFC = nullptr;
-tRegisterTFC RegisterTFC_orig = nullptr;
 
-void RegisterTFC_hook(FString* tfcPath)
+
+#pragma pack(push, 4)
+// Reverse engineered together with d00t
+struct SFXAdditionalContent
 {
-	logger.writeWideLineToLog(wstring_format(L"Basegame TFC registration: %s", tfcPath->Data), true, true);
-	RegisterTFC_orig(tfcPath);
+	unsigned char Unknown1[0x64];
+	FString RelativeDLCPath; // 0x64
+	TArray<BYTE> PCConsoleTOC; // 0x74
+	TArray<BYTE> ConfigFile; //0x84
+	unsigned char Unknown2[0x40]; // 0x94
+	void* PointerToGameContent; // 0xD4
+};
+#pragma pack(pop)
 
-	if (!hasRegisteredDLCs)
+typedef wchar_t* (*tGetDLCName)(SFXAdditionalContent* additionalContent, FString* outDlcName);
+tGetDLCName GetDLCName = nullptr;
+
+typedef unsigned long long (*tRegisterDLCTFC)(SFXAdditionalContent* additionalContent);
+tRegisterDLCTFC RegisterDLCTFC = nullptr;
+tRegisterDLCTFC RegisterDLCTFC_orig = nullptr;
+unsigned long long RegisterDLCTFC_hook(SFXAdditionalContent* content)
+{
+	// Run the initial code
+	auto res = RegisterDLCTFC_orig(content);
+
+	FString dlcName;
+	GetDLCName(content, &dlcName);
+
+	if (dlcName.Count <= 8 || wcsncmp(dlcName.Data, L"DLC_MOD_", 8) != 0)
+		return res; // Not a DLC mod
+
+	auto dlcNameStr = std::wstring(dlcName.Data);
+	if (MountedDLCNames.find(dlcNameStr) != MountedDLCNames.end())
 	{
-		auto dlcTFCs = GetDLCTFCs(GetDLCsRoot());
-		for (auto& path : dlcTFCs) {
-			FString extraTFC(const_cast<wchar_t*>(path.c_str()));
-			logger.writeWideLineToLog(wstring_format(L"Registering extra DLC TFC: %s", extraTFC.Data), true, true);
-			RegisterTFC_orig(&extraTFC);
-		}
-		hasRegisteredDLCs = true;
+		return res; // The DLC TFCs were already mounted. Game seems to call this twice for some reason.
 	}
-}
 
-tRegisterTFC RegisterDLCTFC = nullptr;
-tRegisterTFC RegisterDLCTFC_orig = nullptr;
+	MountedDLCNames.insert(dlcNameStr);
 
-void RegisterDLCTFC_hook(FString* tfcPath)
-{
-	auto f = (wchar_t*)tfcPath;
-	logger.writeWideLineToLog(wstring_format(L"DLC TFC registration: %s", tfcPath->Data), true, true);
-	RegisterDLCTFC_orig(tfcPath);
-}
+	wchar_t dlcCookedPath[512];
+	// No slash
+	swprintf_s(dlcCookedPath, 512, L"%sCookedPCConsole", content->RelativeDLCPath.Data);
+
+	if (std::filesystem::exists(dlcCookedPath))
+	{
+		std::wstring defaultPath = dlcCookedPath;
+		defaultPath += L"\\Textures_";
+		defaultPath += dlcName.Data;
+		defaultPath += L".tfc";
+
+		// Find TFCs in CookedPCConsole folder
+		std::wstring path(dlcCookedPath);
+		std::wstring ext(L".tfc");
+
+		for (auto& p : std::filesystem::recursive_directory_iterator(path))
+		{
+			if (p.path().extension() == ext)
+			{
+				auto lpath = p.path();
+				auto rpath = defaultPath;
+				if (p.path().compare(defaultPath) != 0) // Not the default TFC
+				{
+					logger.writeWideLineToLog(wstring_format(L"Registering additional mod TFC: %s", p.path().c_str()), true, true);
+					FString tfcName(const_cast<wchar_t*>(p.path().c_str()));
+					RegisterTFC(&tfcName);
+				}
+			}
+		}
+	}
 
 
-// The list of pending TFCs to register once our first package file tries to load
-std::vector<FString*> DLCTFCsToRegister;
-
-// Logs a message and registers a TFC
-void RegisterTFCWrapper(FString* tfcPath)
-{
-	logger.writeWideLineToLog(wstring_format(L"  Registering TFC: %s", tfcPath->Data), true);
-	RegisterTFC(tfcPath);
+	return res;
+	//logger.writeWideLineToLog(wstring_format(L"  Registering TFC: %s", tfcPath->Data), true);
+	//RegisterTFC(tfcPath);
 	// This just crashes it idk why
 	//free(tfcPath->Data); // Data constructed here was made with _wcsdup
 }
 
+
 SPI_IMPLEMENT_ATTACH
 {
-	SetWorkingDirectory(); // This needs done at startup
 	if (!GIsRelease) {
 		Common::OpenConsole();
 	}
-	// Find RegisterTFC so we can register TFCs
-	INIT_FIND_PATTERN_POSTHOOK(RegisterTFC, /*48 89 5c 24 10*/ "57 48 83 ec 40 48 8b d9 48 8b 0d 4c 51 41 01 83 7b 08 00 48 8b 01 74 05 48 8b 13 eb 07");
-	INIT_HOOK_PATTERN(RegisterTFC);
+// Find RegisterTFC so we can register TFCs
+INIT_FIND_PATTERN_POSTHOOK(RegisterTFC, /*48 89 5c 24 10*/ "57 48 83 ec 40 48 8b d9 48 8b 0d 4c 51 41 01 83 7b 08 00 48 8b 01 74 05 48 8b 13 eb 07");
 
-	//INIT_FIND_PATTERN_POSTHOOK(RegisterDLCTFC, /*"40 57 41 56 41*/ "57 48 83 ec 40 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 60 48 89 6c 24 68 48 89 74 24 70 48 8b e9 45 33 ff 41 8b ff 48 8b 41 30 44 39 78 08 0f 8e 1c 01 00 00");
-	//INIT_HOOK_PATTERN(RegisterDLCTFC);
+// Hook DLC TFC registration for Textures_DLC_MOD_XXX and mount our TFCs there
+INIT_FIND_PATTERN_POSTHOOK(RegisterDLCTFC, /*"40 57 48 83 ec*/ "60 48 c7 44 24 20 fe ff ff ff 48 89 5c 24 70 48 8b d9 8b 89 c8 00 00 00");
+INIT_HOOK_PATTERN(RegisterDLCTFC);
 
-	// Initialize the SDK because we need object names.
-	// INIT_CHECK_SDK();
-	/*
-	std::wstring dlcRoot = GetDLCsRoot();
-	GetLE1DLCMountOrder(dlcMountOrder, dlcRoot.c_str());
-	for (const auto& autoload : dlcMountOrder) // This has weird error
-	{
-		TCHAR tmpPath[MAX_PATH];
-		TCHAR dlcPath[MAX_PATH];
+// Use game method of determining DLC name for simplicity
+INIT_FIND_PATTERN_POSTHOOK(GetDLCName, /*40 55 48 8b ec*/ "48 83 ec 60 48 c7 45 c0 fe ff ff ff 48 89 5c 24 70 48 89 74 24 78 48 89 bc 24 80 00 00 00 48 8b da 48 8b f9 44 8b 41 6c")
 
-		// It's a DLC mod. LE only has a single autoload.ini (Bring Down The Sky) and it's not in the DLC folder
-		swprintf_s(tmpPath, MAX_PATH, L"..\\..\\BioGame\\DLC\\%s\\AutoLoad.ini", autoload.second.c_str());
-		logger.writeWideLineToLog(wstring_format(L"Found DLC Autoload.ini: %s, mount %i", tmpPath, autoload.first), true);
-		GExtraAutoloadPaths.emplace_back(tmpPath);
-
-		swprintf_s(dlcPath, MAX_PATH, L"..\\..\\BioGame\\DLC\\%s", autoload.second.c_str());
-		auto fileIterator = std::filesystem::recursive_directory_iterator(dlcPath);
-
-		for (const auto& entry : fileIterator)
-		{
-			if (entry.is_directory())
-			{
-				logger.writeWideLineToLog(wstring_format(L"\tScanning %s", entry.path().c_str()), true);
-				continue;
-			}
-
-			// _wcsdup might leak memory but not much. Freeing it upon consumption crashes the app so...
-			auto extension = entry.path().extension();
-			if (extension == L".tfc") {
-				auto tfcPath = entry.path().c_str();
-				logger.writeWideLineToLog(wstring_format(L"\t\tFound TFC: %s", tfcPath), true);
-				DLCTFCsToRegister.push_back(new FString(_wcsdup(tfcPath))); // We have to wait until first registration attempt or we'll hit a null pointer
-			}
-			else if (extension == L".isb")
-			{
-				// Register ISB
-				auto isbPath = entry.path().c_str();
-				logger.writeWideLineToLog(wstring_format(L"\t\tFound ISB: %s", isbPath), true);
-				ISBsToRegister.push_back(_wcsdup(isbPath)); // We have to wait until first registration attempt or we'll hit a null pointer
-			}
-		}
-	}
-	ContentScanComplete = true;
-	*/
-	return true;
+return true;
 }
 
 SPI_IMPLEMENT_DETACH
