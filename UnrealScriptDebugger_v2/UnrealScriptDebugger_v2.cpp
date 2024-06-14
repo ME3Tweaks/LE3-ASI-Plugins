@@ -30,7 +30,7 @@
 #elif defined GAMELE3
 #define SPI_GAME SPI_GAME_LE3
 #endif
-SPI_PLUGINSIDE_SUPPORT(L"UnrealscriptDebugger", L"SirCxyrtyx", L"3.0.0", SPI_GAME, SPI_VERSION_LATEST);
+SPI_PLUGINSIDE_SUPPORT(L"UnrealscriptDebugger", L"SirCxyrtyx", L"3.0.1", SPI_GAME, SPI_VERSION_LATEST);
 SPI_PLUGINSIDE_POSTLOAD;
 SPI_PLUGINSIDE_ASYNCATTACH;
 
@@ -358,7 +358,7 @@ bool DetachDebugger()
 // ======================================================================
 
 typedef void (*tGameEngineTick)(UGameEngine* Context, FLOAT deltaSeconds);
-tGameEngineTick GameEngineTick = nullptr;
+//tGameEngineTick GameEngineTick = nullptr;
 tGameEngineTick GameEngineTick_orig = nullptr;
 void GameEngineTick_hook(UGameEngine* Context, FLOAT deltaSeconds)
 {
@@ -385,7 +385,7 @@ void GameEngineTick_hook(UGameEngine* Context, FLOAT deltaSeconds)
 // ======================================================================
 
 typedef void (*tSetLinker)(UObject* Context, ULinkerLoad* Linker, int LinkerIndex);
-tSetLinker SetLinker = nullptr;
+//tSetLinker SetLinker = nullptr;
 tSetLinker SetLinker_orig = nullptr;
 void SetLinker_hook(UObject* Context, ULinkerLoad* Linker, int LinkerIndex)
 {
@@ -473,74 +473,8 @@ void ProcessCommand(BYTE* str, DWORD len)
 	}
 }
 
-
-SPI_IMPLEMENT_ATTACH
+DWORD WINAPI PipeThreadCallback(LPVOID)
 {
-	//Common::OpenConsole();
-	INIT_CHECK_SDK()
-
-	ProxyInterface = InterfacePtr;
-
-
-#if defined GAMELE1
-	char* ExecutionLoopPattern = "4c 8d 35 5c f2 5a 01 80 38 04 74 30 0f 1f 80 00 00 00 00";
-#elif defined GAMELE2
-	char* ExecutionLoopPattern = "4c 8d 35 1c 08 5d 01 80 38 04 74 30 0f 1f 80 00 00 00 00";
-#elif defined GAMELE3
-char* ExecutionLoopPattern = "4c 8d 35 14 f8 6f 01 80 38 04 74 29 48 8b 43 28";
-#endif
-
-	if (const auto rc = InterfacePtr->FindPattern(&ExecutionLoop, ExecutionLoopPattern);
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to find ExecutionLoop pattern: %d / %s", rc, SPIReturnToString(rc));
-		//return false;
-	}
-
-#if defined GAMELE1
-	char* GameEngineTickPattern = "48 8b c4 55 53 56 57 41 54 41 56 41 57 48 8d a8 e8 fd ff ff";
-#elif defined GAMELE2
-	char* GameEngineTickPattern = "48 8b c4 55 56 57 41 54 41 55 41 56 41 57 48 8d a8 a8 fc ff ff";
-#elif defined GAMELE3
-	char* GameEngineTickPattern = "48 8b c4 55 56 57 41 54 41 55 41 56 41 57 48 8d a8 a8 fc ff ff";
-#endif
-
-	if (const auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&GameEngineTick), GameEngineTickPattern);
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to find GameEngineTick pattern: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-	else if (const auto rc = InterfacePtr->InstallHook(SLHHOOK "GameEngineTick", GameEngineTick, GameEngineTick_hook, reinterpret_cast<void**>(&GameEngineTick_orig));
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to hook GameEngineTick: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-
-	/*if (auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&CallFunction), "40 55 53 56 57 41 54 41 55 41 56 41 57 48 81 EC A8 04 00 00 48 8D 6C 24 20 48 C7 45 68 FE FF FF FF");
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to find CallFunction pattern: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}*/
-
-
-
-	if (const auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&SetLinker), "4c 8b 51 2c 4c 8b c9 4d 85 d2 74 39 48 85 d2 74 1c 48 8b c1");
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to find SetLinker pattern: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-	if (const auto rc = InterfacePtr->InstallHook(SLHHOOK "SetLinker", SetLinker, SetLinker_hook, reinterpret_cast<void**>(&SetLinker_orig));
-		rc != SPIReturn::Success)
-	{
-		writeln(L"Attach - failed to hook SetLinker: %d / %s", rc, SPIReturnToString(rc));
-		return false;
-	}
-
-
 #if defined GAMELE1
 	auto pipeName = TEXT("\\\\.\\pipe\\LEX_LE1_SCRIPTDEBUG_PIPE");
 #elif defined GAMELE2
@@ -558,12 +492,19 @@ char* ExecutionLoopPattern = "4c 8d 35 14 f8 6f 01 80 38 04 74 29 48 8b 43 28";
 		1024 * 16,
 		1024 * 16,
 		NMPWAIT_USE_DEFAULT_WAIT,
-	nullptr);
+		nullptr);
+
+	if (hPipe == INVALID_HANDLE_VALUE)
+	{
+		writeln(L"Pipe - failed to create named pipe '%s': error code = %d", pipeName, GetLastError());
+		return 1;
+	}
 
 	while (hPipe != INVALID_HANDLE_VALUE)
 	{
 		if (ConnectNamedPipe(hPipe, nullptr) != FALSE)   // wait for someone to connect to the pipe
 		{
+			writeln(L"Pipe - connected to named pipe '%s'", pipeName);
 			while (ReadFile(hPipe, buffer, sizeof(buffer) - 1, &numBytesRead, nullptr) != FALSE)
 			{
 				/* add terminating zero */
@@ -574,6 +515,104 @@ char* ExecutionLoopPattern = "4c 8d 35 14 f8 6f 01 80 38 04 74 29 48 8b 43 28";
 		DisconnectNamedPipe(hPipe);
 	}
 
+	return 0;
+}
+
+
+SPI_IMPLEMENT_ATTACH
+{
+	//Common::OpenConsole();
+	INIT_CHECK_SDK()
+	ProxyInterface = InterfacePtr;
+
+
+	// This is a temporary solution to only have a post-hook pattern for LE3.
+#if defined(GAMELE1) || defined(GAMELE2)
+	const std::ptrdiff_t k_patternOffset = 0;
+#elif defined GAMELE3
+	const std::ptrdiff_t k_patternOffset = -5;
+#endif
+
+
+	// Execution loop (part of ProcessInternal) - this is highly unlikely to be hooked by other ASIs, kept as-is.
+#if defined GAMELE1
+	char* const ExecutionLoopPattern = "4c 8d 35 5c f2 5a 01 80 38 04 74 30 0f 1f 80 00 00 00 00";
+#elif defined GAMELE2
+	char* const ExecutionLoopPattern = "4c 8d 35 1c 08 5d 01 80 38 04 74 30 0f 1f 80 00 00 00 00";
+#elif defined GAMELE3
+	char* const ExecutionLoopPattern = "4c 8d 35 14 f8 6f 01 80 38 04 74 29 48 8b 43 28";
+#endif
+
+	if (const auto rc = InterfacePtr->FindPattern(&ExecutionLoop, ExecutionLoopPattern);
+		rc != SPIReturn::Success)
+	{
+		writeln(L"Attach - failed to find ExecutionLoop pattern: %d / %s", rc, SPIReturnToString(rc));
+		return false;
+	}
+
+	// UGameEngine::Tick - this *is* hooked by other ASIs, updated to post-hook.
+#if defined GAMELE1
+	char* const GameEngineTickPattern = "48 8b c4 55 53 56 57 41 54 41 56 41 57 48 8d a8 e8 fd ff ff";
+#elif defined GAMELE2
+	char* const GameEngineTickPattern = "48 8b c4 55 56 57 41 54 41 55 41 56 41 57 48 8d a8 a8 fc ff ff";
+#elif defined GAMELE3
+	char* const GameEngineTickPattern = /* 48 8B C4 55 56 */ "57 41 54 41 55 41 56 41 57 48 8D A8 ?? ?? ?? ?? 48 81 EC 20 04 00 00";
+#endif
+
+	unsigned char* GameEngineTickTarget = nullptr;
+	if (const auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&GameEngineTickTarget), GameEngineTickPattern);
+		rc != SPIReturn::Success)
+	{
+		writeln(L"Attach - failed to find GameEngineTick pattern: %d / %s", rc, SPIReturnToString(rc));
+		return false;
+	}
+	else if (const auto rc = InterfacePtr->InstallHook(SLHHOOK "GameEngineTick", GameEngineTickTarget + k_patternOffset, GameEngineTick_hook, reinterpret_cast<void**>(&GameEngineTick_orig));
+		rc != SPIReturn::Success)
+	{
+		writeln(L"Attach - failed to hook GameEngineTick: %d / %s", rc, SPIReturnToString(rc));
+		return false;
+	}
+
+	// SetLinker - this *is* hooked by other ASIs, updated to post-hook.
+#if defined(GAMELE1) || defined(GAMELE2)
+	char* const SetLinkerPattern = "4c 8b 51 2c 4c 8b c9 4d 85 d2 74 39 48 85 d2 74 1c 48 8b c1";
+#elif defined(GAMELE3)
+	char* const SetLinkerPattern = /* 4c 8b 51 2c 4c */ "8b c9 4d 85 d2 74 39 48 85 d2 74 1c 48 8b c1 48 8b c8 48 8b 40 40 48 85 c0 75 f4";
+#endif
+
+	unsigned char* SetLinkerTarget = nullptr;
+	if (const auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&SetLinkerTarget), SetLinkerPattern);
+		rc != SPIReturn::Success)
+	{
+		writeln(L"Attach - failed to find SetLinker pattern: %d / %s", rc, SPIReturnToString(rc));
+		return false;
+	}
+	else if (const auto rc = InterfacePtr->InstallHook(SLHHOOK "SetLinker", SetLinkerTarget + k_patternOffset, SetLinker_hook, reinterpret_cast<void**>(&SetLinker_orig));
+		rc != SPIReturn::Success)
+	{
+		writeln(L"Attach - failed to hook SetLinker: %d / %s", rc, SPIReturnToString(rc));
+		return false;
+	}
+
+
+	/*if (auto rc = InterfacePtr->FindPattern(reinterpret_cast<void**>(&CallFunction), "40 55 53 56 57 41 54 41 55 41 56 41 57 48 81 EC A8 04 00 00 48 8D 6C 24 20 48 C7 45 68 FE FF FF FF");
+		rc != SPIReturn::Success)
+	{
+		writeln(L"Attach - failed to find CallFunction pattern: %d / %s", rc, SPIReturnToString(rc));
+		return false;
+	}*/
+
+
+	DWORD PipeThreadId = 0;
+	HANDLE PipeThreadHandle = CreateThread(nullptr, 0, PipeThreadCallback, nullptr, 0, &PipeThreadId);
+
+	if (PipeThreadHandle == nullptr)
+	{
+		writeln(L"Attach - failed to create pipe thread, last error = %d", GetLastError());
+		return false;
+	}
+
+	writeln(L"Attach - created pipe thread, id = %d", PipeThreadId);
 	return true;
 }
 
@@ -583,11 +622,9 @@ SPI_IMPLEMENT_DETACH
 	return true;
 }
 
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD  reason, LPVOID) {
-	if (reason == DLL_PROCESS_ATTACH)
-	{
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD dwReason, LPVOID) {
+	if (dwReason == DLL_PROCESS_ATTACH)
 		GetModuleFileName(hModule, logPath, MAX_PATH);
-	}
 
 	return TRUE;
 }
